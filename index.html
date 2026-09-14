@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bolão dos Buxas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,300;0,400;0,600;0,700;0,900;1,700;1,900&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --f1-red:#E10600;
+    --f1-red-escuro:#B00500;
+    --carbono:#15151E;
+    --grafite:#26262E;
+    --cinza:#38383F;
+    --cinza-claro:#949498;
+    --papel:#F7F4F1;
+    --branco:#FFFFFF;
+    --linha:#D6D3CE;
+
+    --f1:"Titillium Web",-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+
+  .bolao *{box-sizing:border-box;margin:0;padding:0}
+
+  .bolao{
+    font-family:var(--f1);
+    background:var(--papel);
+    color:var(--carbono);
+    max-width:560px;
+    margin:0 auto;
+    overflow:hidden;
+  }
+
+  /* ---------- cabeçalho ---------- */
+  .topo{
+    background:var(--carbono);
+    color:var(--branco);
+    padding:16px 18px 14px;
+    position:relative;
+    overflow:hidden;
+  }
+  .topo::after{
+    content:"";
+    position:absolute;
+    top:0;right:-30px;
+    width:80px;height:100%;
+    background:var(--f1-red);
+    transform:skewX(-18deg);
+    opacity:.9;
+  }
+  .marca{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:9px;
+    position:relative;
+    z-index:1;
+  }
+  .barra-red{width:4px;height:15px;background:var(--f1-red);transform:skewX(-14deg)}
+  .sobrenome{
+    font-size:11px;
+    font-weight:700;
+    font-style:italic;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--branco);
+  }
+  .gp-campo{
+    font-family:var(--f1);
+    font-weight:900;
+    font-style:italic;
+    font-size:34px;
+    line-height:.95;
+    letter-spacing:-.01em;
+    text-transform:uppercase;
+    color:var(--branco);
+    background:transparent;
+    border:0;
+    border-bottom:2px solid #3A3A44;
+    width:100%;
+    padding:0 0 5px;
+    position:relative;
+    z-index:1;
+  }
+  .gp-campo:focus{outline:2px solid var(--f1-red);outline-offset:4px;border-bottom-color:var(--f1-red)}
+  .gp-dica{
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--cinza-claro);
+    margin-top:8px;
+    position:relative;
+    z-index:1;
+  }
+
+  /* ---------- faixas ---------- */
+  .faixa{
+    font-size:11px;
+    font-weight:700;
+    font-style:italic;
+    letter-spacing:.13em;
+    text-transform:uppercase;
+    padding:9px 18px 8px;
+    background:var(--branco);
+    border-bottom:1px solid var(--linha);
+    border-left:4px solid var(--f1-red);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+  }
+  .faixa em{
+    font-style:normal;
+    font-weight:600;
+    letter-spacing:.06em;
+    color:var(--cinza-claro);
+  }
+
+  /* ---------- jogadores ---------- */
+  .jogadores{
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+    padding:13px 18px;
+    background:var(--branco);
+  }
+  .chip{
+    font-family:var(--f1);
+    font-weight:700;
+    font-size:14px;
+    letter-spacing:.04em;
+    text-transform:uppercase;
+    padding:8px 14px;
+    background:var(--branco);
+    border:1.5px solid var(--linha);
+    border-radius:999px;
+    color:var(--cinza);
+    cursor:pointer;
+    transition:background .12s,border-color .12s,color .12s;
+  }
+  .chip:hover{border-color:var(--carbono);color:var(--carbono)}
+  .chip:focus-visible{outline:2px solid var(--f1-red);outline-offset:2px}
+  .chip[aria-pressed="true"]{
+    background:var(--f1-red);
+    border-color:var(--f1-red);
+    color:var(--branco);
+  }
+  .chip .marca-ok{font-size:11px;margin-left:6px;vertical-align:1px}
+
+  /* ---------- grid de largada ---------- */
+  .grid{padding:12px 18px 16px;background:var(--papel)}
+  .linha{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .linha.impar{padding-right:24px}
+  .linha.par{padding-left:24px}
+
+  .vaga{
+    font-weight:900;
+    font-style:italic;
+    font-size:15px;
+    line-height:1;
+    background:var(--carbono);
+    color:var(--branco);
+    width:42px;
+    min-width:42px;
+    height:40px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:3px;
+    letter-spacing:-.02em;
+  }
+  .linha.pontos-altos .vaga{background:var(--f1-red)}
+  .linha.zona-bonus .vaga{background:var(--cinza)}
+
+  .campo{
+    flex:1;
+    min-width:0;
+    display:flex;
+    align-items:stretch;
+    background:var(--branco);
+    border:1px solid var(--linha);
+    border-radius:3px;
+    overflow:hidden;
+    transition:border-color .12s;
+  }
+  .campo:focus-within{border-color:var(--carbono)}
+  .campo.repetido{border-color:var(--f1-red);background:#FFF0EF}
+  .tira{width:5px;min-width:5px;background:var(--linha);transition:background .15s}
+
+  .piloto{
+    flex:1;
+    min-width:0;
+    font-family:var(--f1);
+    font-size:15px;
+    font-weight:600;
+    padding:10px 11px;
+    height:40px;
+    background:transparent;
+    border:0;
+    color:var(--carbono);
+  }
+  .piloto::placeholder{color:#B6B3AE;font-weight:400;font-style:italic}
+  .piloto:focus{outline:0}
+  .piloto:disabled{color:var(--cinza-claro);background:#F0EDEA}
+
+  .valor{
+    font-size:11px;
+    font-weight:700;
+    color:var(--cinza-claro);
+    width:30px;
+    min-width:30px;
+    text-align:right;
+    letter-spacing:.02em;
+  }
+
+  .divisor{display:flex;align-items:center;gap:9px;margin:15px 0 11px}
+  .divisor .regua{flex:1;height:2px;background:var(--carbono)}
+  .divisor span{
+    font-size:10px;
+    font-weight:700;
+    font-style:italic;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--carbono);
+  }
+
+  /* ---------- ações ---------- */
+  .acoes{padding:0 18px 18px;background:var(--papel)}
+  .salvar{
+    width:100%;
+    font-family:var(--f1);
+    font-weight:900;
+    font-style:italic;
+    font-size:19px;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    padding:14px 12px;
+    background:var(--f1-red);
+    color:var(--branco);
+    border:0;
+    border-radius:4px;
+    cursor:pointer;
+    transition:background .12s;
+  }
+  .salvar:hover:not(:disabled){background:var(--f1-red-escuro)}
+  .salvar:focus-visible{outline:3px solid var(--carbono);outline-offset:2px}
+  .salvar:disabled{background:#DCD8D4;color:#96928D;cursor:not-allowed}
+
+  .recado{
+    font-size:13px;
+    font-weight:400;
+    line-height:1.5;
+    margin-top:11px;
+    padding:10px 12px;
+    background:var(--branco);
+    border-left:4px solid var(--carbono);
+    border-radius:0 3px 3px 0;
+    color:var(--cinza);
+  }
+  .recado.ok{border-left-color:#00A650}
+  .recado.erro{border-left-color:var(--f1-red)}
+  .recado:empty{display:none}
+
+  .apagar{
+    font-family:var(--f1);
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    background:none;
+    border:0;
+    color:var(--cinza-claro);
+    cursor:pointer;
+    padding:4px 0;
+    margin-top:13px;
+    border-bottom:1px solid var(--linha);
+  }
+  .apagar:hover{color:var(--f1-red);border-color:var(--f1-red)}
+  .apagar:focus-visible{outline:2px solid var(--f1-red);outline-offset:2px}
+
+  /* ---------- enviados ---------- */
+  .enviados{padding:14px 18px 18px;background:var(--branco)}
+  .selo{
+    font-size:11px;
+    font-weight:700;
+    font-style:italic;
+    line-height:1.5;
+    letter-spacing:.1em;
+    padding:10px 12px;
+    margin-bottom:11px;
+    background:var(--carbono);
+    color:var(--branco);
+    border-radius:3px;
+    text-transform:uppercase;
+  }
+  .selo.aberto{background:#00A650}
+  .cartao{
+    background:var(--papel);
+    border:1px solid var(--linha);
+    border-left:4px solid var(--cinza);
+    border-radius:3px;
+    padding:10px 12px;
+    margin-bottom:8px;
+  }
+  .cartao.lacrado{border-left-color:var(--carbono)}
+  .cartao-topo{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .cartao-nome{
+    font-weight:900;
+    font-style:italic;
+    font-size:16px;
+    letter-spacing:.02em;
+    text-transform:uppercase;
+  }
+  .cartao-hora{font-size:11px;font-weight:600;color:var(--cinza-claro)}
+  .cartao-lista{
+    font-size:12.5px;
+    font-weight:400;
+    line-height:1.6;
+    margin-top:6px;
+    color:var(--cinza);
+    word-break:break-word;
+  }
+  .lacre{
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--cinza-claro);
+    margin-top:6px;
+  }
+  .vazio{font-size:13px;line-height:1.6;color:var(--cinza-claro);padding:12px 0}
+
+  .exportar{
+    width:100%;
+    font-family:var(--f1);
+    font-size:12px;
+    font-weight:700;
+    font-style:italic;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    padding:12px;
+    background:var(--carbono);
+    color:var(--branco);
+    border:0;
+    border-radius:4px;
+    cursor:pointer;
+    margin-top:5px;
+  }
+  .exportar:hover:not(:disabled){background:var(--grafite)}
+  .exportar:focus-visible{outline:2px solid var(--f1-red);outline-offset:2px}
+  .exportar:disabled{background:#DCD8D4;color:#96928D;cursor:not-allowed}
+
+  .saida{
+    width:100%;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:11.5px;
+    line-height:1.5;
+    padding:11px;
+    margin-top:9px;
+    height:175px;
+    border:1px solid var(--linha);
+    border-radius:3px;
+    background:var(--papel);
+    display:none;
+  }
+  .saida.aberta{display:block}
+
+  .rodape{
+    font-size:11px;
+    font-weight:600;
+    line-height:1.7;
+    letter-spacing:.03em;
+    text-transform:uppercase;
+    padding:12px 18px;
+    background:var(--carbono);
+    color:var(--cinza-claro);
+    border-top:3px solid var(--f1-red);
+  }
+  .rodape b{color:var(--branco);font-weight:700}
+
+  @media (prefers-reduced-motion:reduce){
+    .bolao *{transition:none!important;animation:none!important}
+  }
+</style>
+<style>
+  .bolao section{background:var(--papel)}
+  #abas{border-bottom:1px solid var(--linha)}
+  #abas .chip{font-style:italic}
+</style>
+</head>
+<body style="margin:0;background:#E9E5E1">
+<noscript><div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#15151E;color:#fff;padding:20px 18px;border-bottom:3px solid #E10600"><p style="font-weight:900;font-size:19px;text-transform:uppercase;margin:0 0 8px">Abra pelo navegador</p><p style="font-size:14px;line-height:1.6;margin:0;color:#C9C9CE">Esta p&aacute;gina precisa de JavaScript. A pr&eacute;via do app Arquivos do iPhone n&atilde;o roda JavaScript &mdash; use o link do bol&atilde;o no Safari ou Chrome.</p></div></noscript>
+<div class="bolao">
+
+  <header class="topo">
+    <div class="marca">
+      <span class="barra-red"></span>
+      <span class="sobrenome">Bolão dos Buxas</span>
+    </div>
+    <input class="gp-campo" id="gp" value="GP da Espanha" spellcheck="false" aria-label="Nome do Grande Prêmio">
+    <p class="gp-dica" id="contagem">carregando…</p>
+  </header>
+
+  <div class="jogadores" id="abas">
+    <button class="chip" data-aba="palpitar" aria-pressed="true">Palpitar</button>
+    <button class="chip" data-aba="painel" aria-pressed="false">Painel</button>
+  </div>
+
+  <section id="tela-palpitar">
+    <div class="faixa">Quem está palpitando <em>toque no seu nome</em></div>
+    <div class="jogadores" id="jogadores"></div>
+
+    <div class="faixa">Sua ordem de chegada <em>P1 → P10</em></div>
+    <div class="grid" id="grid"></div>
+
+    <div class="acoes">
+      <button class="salvar" id="enviar" disabled>Enviar palpite</button>
+      <p class="recado" id="recado"></p>
+    </div>
+  </section>
+
+  <section id="tela-painel" style="display:none">
+    <div class="faixa">Situação da rodada <em id="placar">—</em></div>
+    <div class="enviados">
+      <p class="selo" id="selo">consultando…</p>
+      <div id="lista"></div>
+      <button class="exportar" id="exportar" disabled>Gerar texto para colar no Claude</button>
+      <textarea class="saida" id="saida" readonly aria-label="Texto final"></textarea>
+    </div>
+  </section>
+
+  <p class="rodape"><b>P1–P5 na mosca</b> 25 / 18 / 15 / 12 / 10 · <b>top 5 fora do lugar</b> 5 · <b>P6–P10 só na mosca</b> 5 · <b>bônus de nomes P6–P10</b> +10 inteiro para cada empatado</p>
+
+</div>
+
+<script>
+(function(){
+  const JOGADORES = ['Marcus','Fel','Eric','Peter Flag','Renan'];
+  const PONTOS = ['25','18','15','12','10','5','5','5','5','5'];
+
+  const PILOTOS = ['Norris','Piastri','Verstappen','Hadjar','Russell','Antonelli','Leclerc',
+    'Hamilton','Lawson','Lindblad','Alonso','Stroll','Gasly','Colapinto','Albon','Sainz',
+    'Ocon','Bearman','Hülkenberg','Bortoleto','Pérez','Bottas'];
+
+  const TIMES = {
+    'norris':'#FF8000','piastri':'#FF8000','leclerc':'#E8002D','hamilton':'#E8002D',
+    'russell':'#27F4D2','antonelli':'#27F4D2','verstappen':'#3671C6','hadjar':'#3671C6',
+    'lawson':'#6692FF','lindblad':'#6692FF','alonso':'#229971','stroll':'#229971',
+    'gasly':'#0093CC','colapinto':'#0093CC','albon':'#1868DB','sainz':'#1868DB',
+    'ocon':'#B6BABD','bearman':'#B6BABD','hülkenberg':'#BB0A30','bortoleto':'#BB0A30',
+    'pérez':'#C4A265','perez':'#C4A265','bottas':'#C4A265'
+  };
+
+  const APELIDOS = {kimi:'antonelli',max:'verstappen',russel:'russell',hulk:'hülkenberg',
+    hulkenberg:'hülkenberg',bortoletto:'bortoleto',hadjan:'hadjar',perez:'pérez'};
+
+  let jogador = null;
+  let picks = new Array(10).fill('');
+  let situacao = null;
+
+  const $ = id => document.getElementById(id);
+  const chave = t => { const l = (t||'').trim().toLowerCase(); return APELIDOS[l] || l; };
+  const guardar = {
+    ler(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+    gravar(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+  };
+
+  function codificar(obj){
+    return 'BUXAS1:' + btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/=+$/,'');
+  }
+  function decodificar(str){
+    try{
+      const o = JSON.parse(decodeURIComponent(escape(atob(str.replace(/^BUXAS1:/,'')))));
+      return (o && Array.isArray(o.p) && o.p.length===10) ? o : null;
+    }catch(e){ return null; }
+  }
+
+  /* ---------- montagem ---------- */
+  function montarGrid(){
+    let html = '';
+    for(let i=0;i<10;i++){
+      if(i===5) html += '<div class="divisor"><span>daqui pra baixo vale o bônus</span><div class="regua"></div></div>';
+      const cls = ['linha', i%2===0?'impar':'par', i<5?'pontos-altos':'zona-bonus'].join(' ');
+      html += '<div class="'+cls+'">'+
+        '<div class="vaga">P'+(i+1)+'</div>'+
+        '<div class="campo" data-campo="'+i+'">'+
+          '<span class="tira" data-tira="'+i+'"></span>'+
+          '<input class="piloto" data-i="'+i+'" list="pilotos-lista" autocomplete="off" '+
+          'placeholder="piloto" aria-label="Piloto na posição '+(i+1)+'"></div>'+
+        '<div class="valor">'+PONTOS[i]+'pt</div></div>';
+    }
+    html += '<datalist id="pilotos-lista">'+PILOTOS.map(p=>'<option value="'+p+'">').join('')+'</datalist>';
+    $('grid').innerHTML = html;
+    $('grid').querySelectorAll('.piloto').forEach(inp=>
+      inp.addEventListener('input', e=>{ picks[+e.target.dataset.i] = e.target.value; validar(); }));
+  }
+
+  function montarJogadores(){
+    $('jogadores').innerHTML = JOGADORES.map(n=>
+      '<button class="chip" data-nome="'+n+'" aria-pressed="false">'+n+
+      '<span class="marca-ok" data-marca="'+n+'"></span></button>').join('');
+    $('jogadores').querySelectorAll('.chip').forEach(b=>
+      b.addEventListener('click',()=>escolher(b.dataset.nome)));
+  }
+
+  function escolher(nome){
+    jogador = nome;
+    guardar.gravar('buxas-eu', nome);
+    $('jogadores').querySelectorAll('.chip').forEach(b=>
+      b.setAttribute('aria-pressed', b.dataset.nome===nome ? 'true':'false'));
+    const rasc = guardar.ler('buxas-rascunho-'+gpSlug()+'-'+nome);
+    picks = rasc ? (JSON.parse(rasc)||new Array(10).fill('')) : new Array(10).fill('');
+    document.querySelectorAll('.piloto').forEach((inp,i)=>{ inp.value = picks[i]||''; });
+    recado('','');
+    validar();
+  }
+
+  function gpSlug(){
+    return ($('gp').value||'').trim().toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'');
+  }
+
+  function pintarTiras(){
+    document.querySelectorAll('.tira').forEach((t,i)=>{
+      t.style.background = TIMES[chave(picks[i])] || '#D6D3CE';
+    });
+  }
+
+  function duplicados(){
+    const vistos = {}, dup = new Set();
+    picks.forEach((p,i)=>{
+      if(!p||!p.trim()) return;
+      const k = chave(p);
+      if(vistos[k]!==undefined){ dup.add(i); dup.add(vistos[k]); } else vistos[k]=i;
+    });
+    return dup;
+  }
+
+  function validar(){
+    const dup = duplicados();
+    document.querySelectorAll('.campo').forEach((c,i)=>c.classList.toggle('repetido', dup.has(i)));
+    pintarTiras();
+    const faltam = picks.filter(p=>!p||!p.trim()).length;
+    $('enviar').disabled = !(jogador && faltam===0 && dup.size===0);
+    $('enviar').textContent = !jogador ? 'Escolha seu nome acima'
+      : dup.size ? 'Piloto repetido'
+      : faltam ? 'Faltam '+faltam+' piloto'+(faltam>1?'s':'')
+      : 'Enviar palpite';
+    if(jogador) guardar.gravar('buxas-rascunho-'+gpSlug()+'-'+jogador, JSON.stringify(picks));
+  }
+
+  function recado(txt,tipo){
+    $('recado').textContent = txt;
+    $('recado').className = 'recado' + (tipo?' '+tipo:'');
+  }
+
+  /* ---------- servidor ---------- */
+  async function enviar(){
+    const b = $('enviar');
+    b.disabled = true; b.textContent = 'Enviando…';
+    try{
+      const r = await fetch('/api/palpites', {
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body: JSON.stringify({
+          jogador,
+          gp: $('gp').value.trim(),
+          codigo: codificar({ j: jogador, g: $('gp').value.trim(), p: picks.map(p=>p.trim()) })
+        })
+      });
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.erro||r.status);
+      recado('Recebido. Seu palpite fica lacrado no servidor até os cinco entregarem. '+
+             'Pode reenviar se quiser mudar antes da corrida.','ok');
+      b.textContent = 'Palpite enviado';
+      consultar();
+    }catch(e){
+      b.disabled = false; b.textContent = 'Tentar de novo';
+      recado('Não deu para enviar ('+e.message+'). Tente de novo em instantes.','erro');
+    }
+  }
+
+  async function consultar(){
+    try{
+      const r = await fetch('/api/palpites?gp='+encodeURIComponent($('gp').value.trim()));
+      situacao = await r.json();
+    }catch(e){
+      situacao = null;
+      $('selo').textContent = 'Sem conexão com o servidor';
+      $('selo').className = 'selo';
+      return;
+    }
+    pintarPainel();
+  }
+
+  function pintarPainel(){
+    if(!situacao) return;
+    const ent = situacao.entregues || [];
+    const aberto = !!situacao.aberto;
+
+    $('placar').textContent = ent.length+' de '+JOGADORES.length;
+    $('contagem').textContent = aberto
+      ? 'os cinco entregaram — lacre aberto'
+      : (ent.length ? 'faltam '+situacao.faltando.join(', ') : 'nenhum palpite ainda');
+
+    JOGADORES.forEach(n=>{
+      const m = document.querySelector('[data-marca="'+n+'"]');
+      if(m) m.textContent = ent.some(e=>e.jogador===n) ? '✓' : '';
+    });
+
+    $('selo').className = 'selo' + (aberto?' aberto':'');
+    $('selo').textContent = aberto ? 'Lacre aberto — os cinco entregaram'
+      : (ent.length ? 'Lacrado — falta '+situacao.faltando.join(', ')
+                    : 'Aguardando o primeiro palpite');
+
+    $('exportar').disabled = !aberto;
+    $('exportar').textContent = aberto ? 'Gerar texto para colar no Claude'
+                                       : 'Libera quando os cinco entregarem';
+    if(!aberto) $('saida').classList.remove('aberta');
+
+    $('lista').innerHTML = !ent.length
+      ? '<p class="vazio">Ninguém entregou ainda.</p>'
+      : ent.map(e=>{
+          const h = new Date(e.hora);
+          const hora = isNaN(h) ? '' : h.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+
+            ' '+h.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+          const o = aberto ? decodificar(situacao.palpites[e.jogador]) : null;
+          const corpo = o ? '<div class="cartao-lista">'+o.p.map((d,i)=>(i+1)+'. '+d).join(' · ')+'</div>'
+                          : '<div class="lacre">•••••••••• entregue e lacrado</div>';
+          return '<div class="cartao'+(aberto?'':' lacrado')+'"><div class="cartao-topo">'+
+            '<span class="cartao-nome">'+e.jogador+'</span>'+
+            '<span class="cartao-hora">'+hora+'</span></div>'+corpo+'</div>';
+        }).join('');
+  }
+
+  function exportar(){
+    if(!situacao || !situacao.aberto) return;
+    const nomes = Object.keys(situacao.palpites);
+    const s = $('saida');
+    s.value = 'PALPITES\n' + (situacao.gp || $('gp').value) + '\n\n' +
+      nomes.map(n=>{
+        const o = decodificar(situacao.palpites[n]);
+        return n.toUpperCase()+'\n'+o.p.map((d,i)=>'P'+(i+1)+' '+d).join('\n');
+      }).join('\n\n');
+    s.classList.add('aberta');
+    s.focus(); s.select();
+    try{ navigator.clipboard.writeText(s.value); }catch(e){}
+  }
+
+  function aba(qual){
+    $('tela-palpitar').style.display = qual==='palpitar' ? 'block':'none';
+    $('tela-painel').style.display  = qual==='painel'  ? 'block':'none';
+    $('abas').querySelectorAll('.chip').forEach(b=>
+      b.setAttribute('aria-pressed', b.dataset.aba===qual ? 'true':'false'));
+    if(qual==='painel') consultar();
+  }
+
+  montarJogadores();
+  montarGrid();
+  $('abas').querySelectorAll('.chip').forEach(b=>
+    b.addEventListener('click',()=>aba(b.dataset.aba)));
+  $('enviar').addEventListener('click', enviar);
+  $('exportar').addEventListener('click', exportar);
+  $('gp').addEventListener('change', ()=>{ if(jogador) escolher(jogador); consultar(); });
+
+  const eu = guardar.ler('buxas-eu');
+  if(eu && JOGADORES.includes(eu)) escolher(eu); else validar();
+  consultar();
+  setInterval(()=>{ if($('tela-painel').style.display !== 'none') consultar(); }, 20000);
+})();
+</script>
+
+</body>
+</html>
