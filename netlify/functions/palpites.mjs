@@ -7,10 +7,21 @@ const SENHA = "buxas2026";
 
 // ============================================================
 //  PONTUAÇÃO DE PARTIDA DO CAMPEONATO
-//  Totais logo após o GP da Espanha 2026. As rodadas finalizadas
-//  no site somam em cima destes números.
+//  Totais logo após o GP da Hungria 2026 (antes disso só há o
+//  total acumulado, não a pontuação de cada corrida).
 // ============================================================
-const BASE = { "Marcus": 606, "Peter Flag": 597, "Fel": 584, "Renan": 578, "Eric": 577 };
+const BASE = { "Marcus": 483, "Eric": 459, "Fel": 452, "Renan": 448, "Peter Flag": 444 };
+
+// ============================================================
+//  RODADAS APURADAS ANTES DO SITE EXISTIR
+//  Entram no histórico e no total, na ordem abaixo. As rodadas
+//  finalizadas no site vêm depois destas.
+// ============================================================
+const ANTERIORES = [
+  { nome: "GP da Holanda",    pontos: { "Marcus": 68, "Eric": 63, "Fel": 52, "Renan": 50, "Peter Flag": 45 } },
+  { nome: "GP da Itália",     pontos: { "Renan": 30, "Peter Flag": 25, "Fel": 20, "Eric": 15, "Marcus": 10 } },
+  { nome: "GP da Espanha",    pontos: { "Peter Flag": 83, "Fel": 60, "Renan": 50, "Marcus": 45, "Eric": 40 } }
+];
 
 const JOGADORES = ["Marcus", "Fel", "Eric", "Peter Flag", "Renan"];
 const CONFIG = "__config";
@@ -94,21 +105,20 @@ function pontuar(palpites, oficial) {
   return res;
 }
 
+function historicoOrdenado(config) {
+  const ordem = config.ordem || Object.keys(config.historico || {});
+  const doSite = ordem.map((s) => (config.historico || {})[s]).filter(Boolean);
+  return [...ANTERIORES, ...doSite];
+}
+
 function ranking(config, excluirUltima = false) {
   const totais = { ...BASE };
-  const ordem = config.ordem || Object.keys(config.historico || {});
-  const usar = excluirUltima ? ordem.slice(0, -1) : ordem;
-  for (const s of usar) {
-    const r = (config.historico || {})[s];
-    if (!r) continue;
+  const hist = historicoOrdenado(config);
+  const usar = excluirUltima ? hist.slice(0, -1) : hist;
+  for (const r of usar) {
     for (const [nome, pts] of Object.entries(r.pontos || {})) totais[nome] = (totais[nome] || 0) + pts;
   }
   return Object.entries(totais).sort((a, b) => b[1] - a[1]).map(([jogador, total]) => ({ jogador, total }));
-}
-
-function historicoOrdenado(config) {
-  const ordem = config.ordem || Object.keys(config.historico || {});
-  return ordem.map((s) => (config.historico || {})[s]).filter(Boolean);
 }
 
 export default async (req) => {
