@@ -390,10 +390,13 @@
   .bolao section{background:var(--papel)}
   #abas{border-bottom:1px solid var(--linha)}
   #abas .chip{font-style:italic}
+  .gp-campo[readonly]{border-bottom-style:solid;cursor:default}
+  .gp-campo::placeholder{color:#5A5A64;font-size:20px;font-style:italic;text-transform:none}
+  .org-campo{width:100%;display:block;margin-bottom:7px;border:1px solid var(--linha);border-radius:3px;background:var(--branco)}
 </style>
 </head>
 <body style="margin:0;background:#E9E5E1">
-<noscript><div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#15151E;color:#fff;padding:20px 18px;border-bottom:3px solid #E10600"><p style="font-weight:900;font-size:19px;text-transform:uppercase;margin:0 0 8px">Abra pelo navegador</p><p style="font-size:14px;line-height:1.6;margin:0;color:#C9C9CE">Esta p&aacute;gina precisa de JavaScript. A pr&eacute;via do app Arquivos do iPhone n&atilde;o roda JavaScript &mdash; use o link do bol&atilde;o no Safari ou Chrome.</p></div></noscript>
+<noscript><div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#15151E;color:#fff;padding:20px 18px;border-bottom:3px solid #E10600"><p style="font-weight:900;font-size:19px;text-transform:uppercase;margin:0 0 8px">Abra pelo navegador</p><p style="font-size:14px;line-height:1.6;margin:0;color:#C9C9CE">Esta p&aacute;gina precisa de JavaScript. Use o link do bol&atilde;o no Safari ou Chrome.</p></div></noscript>
 <div class="bolao">
 
   <header class="topo">
@@ -401,7 +404,7 @@
       <span class="barra-red"></span>
       <span class="sobrenome">Bolão dos Buxas</span>
     </div>
-    <input class="gp-campo" id="gp" value="GP da Espanha" spellcheck="false" aria-label="Nome do Grande Prêmio">
+    <input class="gp-campo" id="gp" value="" readonly placeholder="Rodada ainda não aberta" aria-label="Rodada atual">
     <p class="gp-dica" id="contagem">carregando…</p>
   </header>
 
@@ -430,6 +433,15 @@
       <div id="lista"></div>
       <button class="exportar" id="exportar" disabled>Gerar texto para colar no Claude</button>
       <textarea class="saida" id="saida" readonly aria-label="Texto final"></textarea>
+    </div>
+
+    <div class="faixa">Organizador <em>precisa da senha</em></div>
+    <div class="acoes" style="padding-top:14px">
+      <input class="piloto org-campo" id="senha" type="password" placeholder="senha do organizador" aria-label="Senha">
+      <input class="piloto org-campo" id="nova" type="text" placeholder="nome da próxima rodada, ex.: GP de Singapura" aria-label="Nome da nova rodada">
+      <button class="exportar" id="abrir-rodada" style="margin-top:9px">Abrir nova rodada com esse nome</button>
+      <button class="apagar" id="zerar" style="color:#B4472C">Zerar a rodada atual (apaga os palpites enviados)</button>
+      <p class="recado" id="recado-org"></p>
     </div>
   </section>
 
@@ -544,8 +556,10 @@
     document.querySelectorAll('.campo').forEach((c,i)=>c.classList.toggle('repetido', dup.has(i)));
     pintarTiras();
     const faltam = picks.filter(p=>!p||!p.trim()).length;
-    $('enviar').disabled = !(jogador && faltam===0 && dup.size===0);
-    $('enviar').textContent = !jogador ? 'Escolha seu nome acima'
+    const semRodada = !$('gp').value;
+    $('enviar').disabled = semRodada || !(jogador && faltam===0 && dup.size===0);
+    $('enviar').textContent = semRodada ? 'Rodada ainda não aberta'
+      : !jogador ? 'Escolha seu nome acima'
       : dup.size ? 'Piloto repetido'
       : faltam ? 'Faltam '+faltam+' piloto'+(faltam>1?'s':'')
       : 'Enviar palpite';
@@ -567,8 +581,7 @@
         headers:{'content-type':'application/json'},
         body: JSON.stringify({
           jogador,
-          gp: $('gp').value.trim(),
-          codigo: codificar({ j: jogador, g: $('gp').value.trim(), p: picks.map(p=>p.trim()) })
+          codigo: codificar({ j: jogador, g: $('gp').value, p: picks.map(p=>p.trim()) })
         })
       });
       const d = await r.json();
@@ -585,8 +598,13 @@
 
   async function consultar(){
     try{
-      const r = await fetch('/api/palpites?gp='+encodeURIComponent($('gp').value.trim()));
+      const r = await fetch('/api/palpites');
       situacao = await r.json();
+      const antes = $('gp').value;
+      $('gp').value = situacao.rodada || '';
+      if(antes !== $('gp').value && jogador) escolher(jogador);
+      $('enviar').disabled = $('enviar').disabled || !situacao.rodada;
+      if(!situacao.rodada){ $('enviar').textContent = 'Rodada ainda não aberta'; }
     }catch(e){
       situacao = null;
       $('selo').textContent = 'Sem conexão com o servidor';
@@ -601,6 +619,16 @@
     const ent = situacao.entregues || [];
     const aberto = !!situacao.aberto;
 
+    if(!situacao.rodada){
+      $('placar').textContent = '—';
+      $('contagem').textContent = 'o organizador ainda não abriu a rodada';
+      $('selo').className = 'selo';
+      $('selo').textContent = 'Nenhuma rodada aberta';
+      $('lista').innerHTML = '<p class="vazio">Abra uma rodada na área do organizador, logo abaixo.</p>';
+      $('exportar').disabled = true;
+      $('exportar').textContent = 'Libera quando os cinco entregarem';
+      return;
+    }
     $('placar').textContent = ent.length+' de '+JOGADORES.length;
     $('contagem').textContent = aberto
       ? 'os cinco entregaram — lacre aberto'
@@ -650,6 +678,31 @@
     try{ navigator.clipboard.writeText(s.value); }catch(e){}
   }
 
+  async function organizador(acao){
+    const senha = $('senha').value;
+    const rodada = $('nova').value.trim();
+    const r = $('recado-org');
+    if(!senha){ r.textContent = 'Digite a senha do organizador.'; r.className='recado erro'; return; }
+    if(acao==='nova-rodada' && !rodada){ r.textContent = 'Dê um nome à nova rodada.'; r.className='recado erro'; return; }
+    if(acao==='zerar' && !confirm('Apagar todos os palpites enviados na rodada atual?')) return;
+    try{
+      const resp = await fetch('/api/palpites', {method:'POST',
+        headers:{'content-type':'application/json'},
+        body: JSON.stringify({acao, senha, rodada})});
+      const d = await resp.json();
+      if(!resp.ok) throw new Error(d.erro||resp.status);
+      r.textContent = acao==='nova-rodada'
+        ? 'Rodada "'+d.rodada+'" aberta. Os jogadores já veem esse nome ao abrir o site.'
+        : 'Palpites da rodada "'+d.rodada+'" apagados. Ela continua aberta, zerada.';
+      r.className = 'recado ok';
+      $('nova').value = '';
+      consultar();
+    }catch(e){
+      r.textContent = 'Não deu: '+e.message;
+      r.className = 'recado erro';
+    }
+  }
+
   function aba(qual){
     $('tela-palpitar').style.display = qual==='palpitar' ? 'block':'none';
     $('tela-painel').style.display  = qual==='painel'  ? 'block':'none';
@@ -664,7 +717,8 @@
     b.addEventListener('click',()=>aba(b.dataset.aba)));
   $('enviar').addEventListener('click', enviar);
   $('exportar').addEventListener('click', exportar);
-  $('gp').addEventListener('change', ()=>{ if(jogador) escolher(jogador); consultar(); });
+  $('abrir-rodada').addEventListener('click', ()=>organizador('nova-rodada'));
+  $('zerar').addEventListener('click', ()=>organizador('zerar'));
 
   const eu = guardar.ler('buxas-eu');
   if(eu && JOGADORES.includes(eu)) escolher(eu); else validar();
