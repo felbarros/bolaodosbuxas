@@ -57,6 +57,43 @@ const ALIAS = {
   fernando: "alonso", lance: "stroll", esteban: "ocon", valtteri: "bottas", sergio: "perez"
 };
 
+// Nome como o site exibe, a partir da chave normalizada
+const ROTULO = Object.fromEntries(["Norris","Piastri","Antonelli","Russell","Leclerc","Hamilton","Verstappen","Hadjar",
+  "Lawson","Lindblad","Alonso","Stroll","Gasly","Colapinto","Albon","Sainz","Ocon","Bearman","Hülkenberg","Bortoleto",
+  "Pérez","Bottas"].map((n) => [n.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""), n]));
+
+// Busca a classificação mais recente na Jolpica F1 (sucessora da Ergast)
+async function buscarResultado(config) {
+  if (!config.rodada) return { erro: "nenhuma rodada aberta" };
+  const r = await fetch("https://api.jolpi.ca/ergast/f1/2026/last/results.json", {
+    headers: { "user-agent": "bolao-dos-buxas/1.0" }
+  });
+  if (!r.ok) return { erro: "a fonte respondeu " + r.status };
+  const d = await r.json();
+  const corrida = d?.MRData?.RaceTable?.Races?.[0];
+  if (!corrida || !Array.isArray(corrida.Results) || !corrida.Results.length)
+    return { erro: "a fonte ainda não publicou nenhum resultado desta temporada" };
+
+  // A corrida mais recente na fonte tem que ser a desta rodada (±2 dias da largada)
+  const dataFonte = Date.parse(corrida.date + "T" + (corrida.time || "12:00:00Z"));
+  const largada = config.prazo ? Date.parse(config.prazo) : NaN;
+  if (!isNaN(largada) && Math.abs(dataFonte - largada) > 2 * 86400e3)
+    return { erro: "a fonte ainda não tem o resultado de " + config.rodada +
+                   " (última corrida publicada: " + corrida.raceName + ", " + corrida.date + ")" };
+
+  const top10 = corrida.Results
+    .filter((x) => /^\d+$/.test(String(x.position)))
+    .sort((a, b) => +a.position - +b.position)
+    .slice(0, 10)
+    .map((x) => {
+      const sobrenome = x.Driver?.familyName || "";
+      return ROTULO[norm(sobrenome)] || sobrenome;
+    });
+  if (top10.length !== 10) return { erro: "a fonte devolveu só " + top10.length + " classificados" };
+  return { ok: true, resultado: top10, corrida: corrida.raceName, data: corrida.date,
+           aviso: "Confira antes de finalizar: punições aplicadas depois da corrida podem ainda não estar refletidas." };
+}
+
 const norm = (n) => {
   let s = (n || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const partes = s.split(/\s+/).filter(Boolean);
@@ -191,6 +228,16 @@ export default async (req) => {
       config.ordem = (config.ordem || []).filter((s) => s !== slug(config.rodada));
       await store.setJSON(CONFIG, config);
       return json({ ok: true, rodada: config.rodada });
+    }
+
+    // ---------- apuração: buscar resultado na fonte ----------
+    if (corpo.acao === "buscar-resultado") {
+      try {
+        const res = await buscarResultado(config);
+        return json(res, res.ok ? 200 : 400);
+      } catch (e) {
+        return json({ erro: "não consegui falar com a fonte (" + (e.message || e) + ")" }, 502);
+      }
     }
 
     // ---------- apuração: prévia ou finalização ----------
