@@ -529,6 +529,10 @@
   <!-- ================= APURAÇÃO ================= -->
   <section id="tela-apurar" style="display:none">
     <div class="faixa">Resultado oficial <em>classificação final, pós-punições</em></div>
+    <div class="acoes" style="padding:12px 18px 0">
+      <button class="exportar" id="buscar">Buscar resultado oficial</button>
+      <p class="recado" id="recado-busca"></p>
+    </div>
     <div class="seletor">
       <div class="slots" id="slots-r"></div>
     </div>
@@ -930,6 +934,25 @@
     }catch(e){ r.textContent = 'Não deu: '+e.message; r.className = 'recado erro'; }
   }
 
+  async function buscarResultado(){
+    const b = $('buscar'), r = $('recado-busca');
+    b.disabled = true; b.textContent = 'Buscando…'; r.textContent = ''; r.className = 'recado';
+    try{
+      const resp = await fetch('/api/palpites', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({acao:'buscar-resultado'})});
+      const d = await resp.json();
+      if(!resp.ok) throw new Error(d.erro||resp.status);
+      resultado = d.resultado.slice();
+      guardar.gravar('buxas-resultado-'+gpSlug(), JSON.stringify(resultado));
+      renderResultado();
+      r.textContent = 'Preenchido com '+d.corrida+' ('+d.data+'). '+d.aviso;
+      r.className = 'recado ok';
+    }catch(e){
+      r.textContent = 'Não deu: '+e.message+' — preencha na mão ou tente de novo mais tarde.';
+      r.className = 'recado erro';
+    }
+    b.disabled = false; b.textContent = 'Buscar resultado oficial';
+  }
+
   function renderApuracao(ap, final){
     const ordem = Object.keys(ap).sort((a,b)=>ap[b].rodada-ap[a].rodada);
     let html = '<div class="faixa">Rodada <em>'+(final?'finalizada':'prévia')+'</em></div><div class="enviados">';
@@ -961,6 +984,7 @@
   $('exportar').addEventListener('click', exportar);
   $('abrir-rodada').addEventListener('click', ()=>organizador('nova-rodada'));
   $('zerar').addEventListener('click', ()=>organizador('zerar'));
+  $('buscar').addEventListener('click', buscarResultado);
   $('calcular').addEventListener('click', ()=>apurar('calcular'));
   $('finalizar').addEventListener('click', ()=>apurar('finalizar'));
   function alternarOrg(){
