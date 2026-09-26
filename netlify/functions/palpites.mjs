@@ -7,20 +7,31 @@ const SENHA = "buxas2026";
 
 // ============================================================
 //  PONTUAÇÃO DE PARTIDA DO CAMPEONATO
-//  Totais logo após o GP da Hungria 2026 (antes disso só há o
-//  total acumulado, não a pontuação de cada corrida).
+//  Todos começam do zero, exceto Peter Flag, que entrou no GP do
+//  Canadá com 147 pontos de base.
 // ============================================================
-const BASE = { "Marcus": 483, "Eric": 459, "Fel": 452, "Renan": 448, "Peter Flag": 444 };
+const BASE = { "Marcus": 0, "Eric": 0, "Fel": 0, "Renan": 0, "Peter Flag": 147 };
 
 // ============================================================
-//  RODADAS APURADAS ANTES DO SITE EXISTIR
-//  Entram no histórico e no total, na ordem abaixo. As rodadas
-//  finalizadas no site vêm depois destas.
+//  RODADAS APURADAS ANTES DO SITE EXISTIR (em ordem)
+//  Jogador ausente de uma rodada = não participou (mostra "—").
+//  As rodadas finalizadas no site entram depois destas.
 // ============================================================
 const ANTERIORES = [
-  { nome: "GP da Holanda",    pontos: { "Marcus": 68, "Eric": 63, "Fel": 52, "Renan": 50, "Peter Flag": 45 } },
-  { nome: "GP da Itália",     pontos: { "Renan": 30, "Peter Flag": 25, "Fel": 20, "Eric": 15, "Marcus": 10 } },
-  { nome: "GP da Espanha",    pontos: { "Peter Flag": 83, "Fel": 60, "Renan": 50, "Marcus": 45, "Eric": 40 } }
+  { nome: "GP da Austrália",   pontos: { "Marcus": 50, "Eric": 40, "Fel": 35, "Renan": 68 } },
+  { nome: "GP da China",       pontos: { "Marcus": 25, "Eric": 47, "Fel": 27, "Renan": 40 } },
+  { nome: "GP do Japão",       pontos: { "Marcus": 30, "Eric": 45, "Fel": 35, "Renan": 60 } },
+  { nome: "GP de Miami",       pontos: { "Marcus": 53, "Eric": 30, "Fel": 50, "Renan": 30 } },
+  { nome: "GP do Canadá",      pontos: { "Marcus": 25, "Eric": 40, "Fel": 30, "Renan": 20, "Peter Flag": 40 } },
+  { nome: "GP de Mônaco",      pontos: { "Marcus": 40, "Eric": 30, "Fel": 52, "Renan": 30, "Peter Flag": 30 } },
+  { nome: "GP de Barcelona",   pontos: { "Marcus": 55, "Eric": 40, "Fel": 43, "Renan": 20, "Peter Flag": 55 } },
+  { nome: "GP da Áustria",     pontos: { "Marcus": 65, "Eric": 55, "Fel": 50, "Renan": 30, "Peter Flag": 35 } },
+  { nome: "GP da Inglaterra",  pontos: { "Marcus": 35, "Eric": 25, "Fel": 48, "Renan": 30, "Peter Flag": 25 } },
+  { nome: "GP da Bélgica",     pontos: { "Marcus": 50, "Eric": 62, "Fel": 47, "Renan": 50, "Peter Flag": 72 } },
+  { nome: "GP da Hungria",     pontos: { "Marcus": 55, "Eric": 45, "Fel": 35, "Renan": 70, "Peter Flag": 40 } },
+  { nome: "GP da Holanda",     pontos: { "Marcus": 68, "Eric": 63, "Fel": 52, "Renan": 50, "Peter Flag": 45 } },
+  { nome: "GP da Itália",      pontos: { "Marcus": 10, "Eric": 15, "Fel": 20, "Renan": 30, "Peter Flag": 25 } },
+  { nome: "GP de Madrid",      pontos: { "Marcus": 45, "Eric": 40, "Fel": 60, "Renan": 50, "Peter Flag": 83 } }
 ];
 
 // ============================================================
