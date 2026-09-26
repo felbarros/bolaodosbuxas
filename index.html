@@ -1,4 +1,10 @@
-<!DOCTYPE html>\n<html lang="pt-BR">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width,initial-scale=1">\n<title>Bolão dos Buxas</title>\n<link rel="preconnect" href="https://fonts.googleapis.com">
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bolão dos Buxas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Titillium+Web:ital,wght@0,300;0,400;0,600;0,700;0,900;1,700;1,900&display=swap" rel="stylesheet">
 
@@ -448,8 +454,10 @@
   .pil.usado{opacity:.55;text-decoration:none;cursor:pointer}
   .pil.atual{border-color:var(--f1-red);background:#FFF0EF;opacity:1}
   @media (prefers-reduced-motion:reduce){.folha,.folha-fundo{transition:none}}
-</style>
-</head>\n<body style="margin:0;background:#E9E5E1">\n<noscript><div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#15151E;color:#fff;padding:20px 18px;border-bottom:3px solid #E10600"><p style="font-weight:900;font-size:19px;text-transform:uppercase;margin:0 0 8px">Abra pelo navegador</p><p style="font-size:14px;line-height:1.6;margin:0;color:#C9C9CE">Esta p&aacute;gina precisa de JavaScript. Use o link do bol&atilde;o no Safari ou Chrome.</p></div></noscript>\n<div class="bolao">
+</style></head>
+<body style="margin:0;background:#E9E5E1">
+<noscript><div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#15151E;color:#fff;padding:20px 18px;border-bottom:3px solid #E10600"><p style="font-weight:900;font-size:19px;text-transform:uppercase;margin:0 0 8px">Abra pelo navegador</p><p style="font-size:14px;line-height:1.6;margin:0;color:#C9C9CE">Esta p&aacute;gina precisa de JavaScript. Use o link do bol&atilde;o no Safari ou Chrome.</p></div></noscript>
+<div class="bolao">
 
   <header class="topo">
     <div class="marca">
@@ -508,6 +516,7 @@
       <div class="acoes" style="padding-top:14px">
         <input class="piloto org-campo" id="senha" type="password" placeholder="senha do organizador" aria-label="Senha">
         <input class="piloto org-campo" id="nova" type="text" placeholder="nome da próxima rodada, ex.: GP de Singapura" aria-label="Nome da nova rodada">
+        <p class="folha-dica" style="padding:0 0 8px">As rodadas do calendário abrem sozinhas, com prazo na largada. Use isto só para uma rodada fora do calendário ou para corrigir algo.</p>
         <label class="rotulo">Prazo para enviar (opcional)</label>
         <input class="piloto org-campo" id="prazo" type="datetime-local" aria-label="Prazo">
         <button class="exportar" id="abrir-rodada" style="margin-top:9px">Abrir nova rodada com esse nome</button>
@@ -693,7 +702,7 @@
   }
 
   function renderPalpite(){
-    const travado = !$('gp').value || prazoEncerrado();
+    const travado = !$('gp').value || prazoEncerrado() || !!(situacao && situacao.finalizada);
     renderSeletor('p', picks, ()=>{ if(jogador) guardar.gravar('buxas-rascunho-'+gpSlug()+'-'+jogador, JSON.stringify(picks)); validar(); }, travado);
     validar();
     statusEnvio();
@@ -702,9 +711,11 @@
   function validar(){
     const faltam = picks.filter(p=>!p).length;
     const semRodada = !$('gp').value;
+    const fin = !!(situacao && situacao.finalizada);
     const enc = prazoEncerrado();
-    $('enviar').disabled = semRodada || enc || !(jogador && faltam===0);
+    $('enviar').disabled = semRodada || fin || enc || !(jogador && faltam===0);
     $('enviar').textContent = semRodada ? 'Rodada ainda não aberta'
+      : fin ? 'Rodada finalizada — a próxima abre sozinha'
       : enc ? 'Prazo encerrado'
       : !jogador ? 'Escolha seu nome acima'
       : faltam ? 'Faltam '+faltam+' piloto'+(faltam>1?'s':'')
@@ -739,11 +750,21 @@
   }
 
   /* ---------- prazo / cabeçalho ---------- */
+  function quandoAbre(){
+    const p = situacao && situacao.proxima; if(!p) return '';
+    const dias = Math.ceil((Date.parse(p.largada) - Date.now())/86400e3) - 10;
+    return dias <= 0 ? 'abre sozinha na próxima vez que alguém abrir o site' : 'abre sozinha em '+dias+' dia'+(dias>1?'s':'');
+  }
   function textoPrazo(){
-    if(!situacao || !situacao.rodada) return 'o organizador ainda não abriu a rodada';
+    if(!situacao) return 'carregando…';
+    if(!situacao.rodada) return situacao.proxima ? 'próxima: '+situacao.proxima.nome+' · '+quandoAbre() : 'temporada encerrada';
     const ent = (situacao.entregues||[]).length;
     const partes = [];
-    if(situacao.finalizada) partes.push('rodada finalizada');
+    if(situacao.finalizada){
+      partes.push('rodada finalizada');
+      if(situacao.proxima) partes.push('próxima: '+situacao.proxima.nome+' · '+quandoAbre());
+      return partes.join(' · ');
+    }
     else if(situacao.aberto) partes.push('os cinco entregaram — lacre aberto');
     else partes.push(ent ? 'faltam '+situacao.faltando.join(', ') : 'nenhum palpite ainda');
     if(situacao.prazo && !situacao.finalizada){
@@ -979,4 +1000,6 @@
   setInterval(()=>{ if($('tela-painel').style.display !== 'none') consultar(); }, 20000);
 })();
 </script>
-\n</body>\n</html>
+
+</body>
+</html>
