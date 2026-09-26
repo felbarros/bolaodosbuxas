@@ -393,6 +393,46 @@
   .gp-campo[readonly]{border-bottom-style:solid;cursor:default}
   .gp-campo::placeholder{color:#5A5A64;font-size:20px;font-style:italic;text-transform:none}
   .org-campo{width:100%;display:block;margin-bottom:7px;border:1px solid var(--linha);border-radius:3px;background:var(--branco)}
+  .rotulo{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--cinza-claro);margin:6px 0 4px}
+
+  /* seletor de pilotos */
+  .seletor{padding:10px 18px 4px;background:var(--papel)}
+  .slots .linha{margin-bottom:6px}
+  .slots .campo{align-items:center;min-height:40px}
+  .nome-slot{flex:1;min-width:0;padding:0 10px;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .nome-slot i{color:#B6B3AE;font-weight:400}
+  .linha.vazia .campo{border-style:dashed}
+  .ctl{display:flex;gap:2px;padding-right:4px}
+  .ctl button{width:30px;height:30px;border:0;background:var(--papel);color:var(--carbono);border-radius:3px;font-size:12px;cursor:pointer;font-family:var(--f1)}
+  .ctl button:hover{background:var(--carbono);color:#fff}
+  .ctl button[data-x]{color:var(--f1-red)}
+  .grade{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:12px 0 10px}
+  .pil{font-family:var(--f1);font-weight:700;font-size:13px;letter-spacing:.03em;text-transform:uppercase;padding:9px 8px 9px 12px;border:1px solid var(--linha);border-left:5px solid var(--c);border-radius:3px;background:var(--branco);color:var(--carbono);cursor:pointer;text-align:left;transition:background .1s}
+  .pil:hover:not(:disabled){background:#F0EDEA}
+  .pil.usado{opacity:.28;text-decoration:line-through;cursor:default}
+  .pil:disabled{opacity:.35;cursor:not-allowed}
+  @media(min-width:420px){.grade{grid-template-columns:repeat(3,1fr)}}
+
+  .status-envio{margin:0 18px 4px;padding:10px 12px;background:#E8F7EE;border-left:4px solid #00A650;border-radius:0 3px 3px 0;font-size:13px;line-height:1.5;color:#1E4D33}
+
+  /* tabelas */
+  .tab{width:100%;border-collapse:collapse;margin-bottom:10px;font-size:13px}
+  .tab th{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--cinza-claro);text-align:right;padding:4px 6px;border-bottom:1px solid var(--linha);white-space:nowrap}
+  .tab th:first-child,.tab td:first-child{text-align:left}
+  .tab td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--linha);white-space:nowrap}
+  .tab td:first-child{text-align:left}
+  .tab .num{width:26px;text-align:center;font-weight:900;font-style:italic;color:var(--f1-red)}
+  .tab .ult{color:var(--cinza-claro);font-size:12px}
+  .tab .tot{font-size:15px}
+  .sobe{color:#00A650;font-size:11px;font-weight:700;margin-left:4px}
+  .desce{color:var(--f1-red);font-size:11px;font-weight:700;margin-left:4px}
+  .igual{color:var(--cinza-claro);font-size:11px;margin-left:4px}
+  .rolar{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .hist td,.hist th{font-size:12px;padding:6px 8px}
+  details.cartao summary{cursor:pointer;list-style:none}
+  details.cartao summary::-webkit-details-marker{display:none}
+  details.cartao summary::before{content:"▸ ";color:var(--f1-red)}
+  details[open].cartao summary::before{content:"▾ "}
 </style>
 </head>
 <body style="margin:0;background:#E9E5E1">
@@ -411,21 +451,29 @@
   <div class="jogadores" id="abas">
     <button class="chip" data-aba="palpitar" aria-pressed="true">Palpitar</button>
     <button class="chip" data-aba="painel" aria-pressed="false">Painel</button>
+    <button class="chip" data-aba="apurar" aria-pressed="false">Apuração</button>
   </div>
 
+  <!-- ================= PALPITAR ================= -->
   <section id="tela-palpitar">
     <div class="faixa">Quem está palpitando <em>toque no seu nome</em></div>
     <div class="jogadores" id="jogadores"></div>
+    <p class="status-envio" id="status-envio" style="display:none"></p>
 
-    <div class="faixa">Sua ordem de chegada <em>P1 → P10</em></div>
-    <div class="grid" id="grid"></div>
+    <div class="faixa">Sua ordem de chegada <em>toque num piloto para preencher</em></div>
+    <div class="seletor">
+      <div class="slots" id="slots-p"></div>
+      <div class="grade" id="grade-p"></div>
+    </div>
 
     <div class="acoes">
       <button class="salvar" id="enviar" disabled>Enviar palpite</button>
       <p class="recado" id="recado"></p>
+      <button class="apagar" id="limpar">Limpar tudo</button>
     </div>
   </section>
 
+  <!-- ================= PAINEL ================= -->
   <section id="tela-painel" style="display:none">
     <div class="faixa">Situação da rodada <em id="placar">—</em></div>
     <div class="enviados">
@@ -435,14 +483,45 @@
       <textarea class="saida" id="saida" readonly aria-label="Texto final"></textarea>
     </div>
 
-    <div class="faixa">Organizador <em>precisa da senha</em></div>
-    <div class="acoes" style="padding-top:14px">
-      <input class="piloto org-campo" id="senha" type="password" placeholder="senha do organizador" aria-label="Senha">
-      <input class="piloto org-campo" id="nova" type="text" placeholder="nome da próxima rodada, ex.: GP de Singapura" aria-label="Nome da nova rodada">
-      <button class="exportar" id="abrir-rodada" style="margin-top:9px">Abrir nova rodada com esse nome</button>
-      <button class="apagar" id="zerar" style="color:#B4472C">Zerar a rodada atual (apaga os palpites enviados)</button>
-      <p class="recado" id="recado-org"></p>
+    <div class="faixa">Campeonato <em id="rodadas-contadas">—</em></div>
+    <div class="enviados" id="ranking-box"><p class="vazio">carregando…</p></div>
+    <div class="enviados" id="historico-box" style="padding-top:0"></div>
+
+    <div class="acoes" style="text-align:center;padding-top:0">
+      <button class="apagar" id="mostrar-org">sou o organizador</button>
     </div>
+
+    <div id="area-org" style="display:none">
+      <div class="faixa">Organizador <em>precisa da senha</em></div>
+      <div class="acoes" style="padding-top:14px">
+        <input class="piloto org-campo" id="senha" type="password" placeholder="senha do organizador" aria-label="Senha">
+        <input class="piloto org-campo" id="nova" type="text" placeholder="nome da próxima rodada, ex.: GP de Singapura" aria-label="Nome da nova rodada">
+        <label class="rotulo">Prazo para enviar (opcional)</label>
+        <input class="piloto org-campo" id="prazo" type="datetime-local" aria-label="Prazo">
+        <button class="exportar" id="abrir-rodada" style="margin-top:9px">Abrir nova rodada com esse nome</button>
+        <button class="apagar" id="zerar" style="color:#B4472C">Zerar a rodada atual (apaga os palpites enviados)</button>
+        <p class="recado" id="recado-org"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= APURAÇÃO ================= -->
+  <section id="tela-apurar" style="display:none">
+    <div class="faixa">Resultado oficial <em>classificação final, pós-punições</em></div>
+    <div class="seletor">
+      <div class="slots" id="slots-r"></div>
+      <div class="grade" id="grade-r"></div>
+    </div>
+    <div class="acoes">
+      <button class="salvar" id="calcular" disabled>Calcular prévia</button>
+      <p class="recado" id="recado-ap"></p>
+      <div id="finalizar-box" style="display:none">
+        <input class="piloto org-campo" id="senha-ap" type="password" placeholder="senha do organizador" aria-label="Senha" style="margin-top:12px">
+        <button class="exportar" id="finalizar" disabled>Finalizar rodada e somar no campeonato</button>
+      </div>
+      <button class="apagar" id="limpar-r">Limpar resultado</button>
+    </div>
+    <div id="apuracao-box"></div>
   </section>
 
   <p class="rodape"><b>P1–P5 na mosca</b> 25 / 18 / 15 / 12 / 10 · <b>top 5 fora do lugar</b> 5 · <b>P6–P10 só na mosca</b> 5 · <b>bônus de nomes P6–P10</b> +10 inteiro para cada empatado</p>
@@ -454,63 +533,88 @@
   const JOGADORES = ['Marcus','Fel','Eric','Peter Flag','Renan'];
   const PONTOS = ['25','18','15','12','10','5','5','5','5','5'];
 
-  const PILOTOS = ['Norris','Piastri','Verstappen','Hadjar','Russell','Antonelli','Leclerc',
-    'Hamilton','Lawson','Lindblad','Alonso','Stroll','Gasly','Colapinto','Albon','Sainz',
-    'Ocon','Bearman','Hülkenberg','Bortoleto','Pérez','Bottas'];
-
-  const TIMES = {
-    'norris':'#FF8000','piastri':'#FF8000','leclerc':'#E8002D','hamilton':'#E8002D',
-    'russell':'#27F4D2','antonelli':'#27F4D2','verstappen':'#3671C6','hadjar':'#3671C6',
-    'lawson':'#6692FF','lindblad':'#6692FF','alonso':'#229971','stroll':'#229971',
-    'gasly':'#0093CC','colapinto':'#0093CC','albon':'#1868DB','sainz':'#1868DB',
-    'ocon':'#B6BABD','bearman':'#B6BABD','hülkenberg':'#BB0A30','bortoleto':'#BB0A30',
-    'pérez':'#C4A265','perez':'#C4A265','bottas':'#C4A265'
-  };
-
-  const APELIDOS = {kimi:'antonelli',max:'verstappen',russel:'russell',hulk:'hülkenberg',
-    hulkenberg:'hülkenberg',bortoletto:'bortoleto',hadjan:'hadjar',perez:'pérez'};
+  // Grid 2026, agrupado por equipe
+  const PILOTOS = [
+    ['Norris','#FF8000'],['Piastri','#FF8000'],
+    ['Antonelli','#27F4D2'],['Russell','#27F4D2'],
+    ['Leclerc','#E8002D'],['Hamilton','#E8002D'],
+    ['Verstappen','#3671C6'],['Hadjar','#3671C6'],
+    ['Lawson','#6692FF'],['Lindblad','#6692FF'],
+    ['Alonso','#229971'],['Stroll','#229971'],
+    ['Gasly','#0093CC'],['Colapinto','#0093CC'],
+    ['Albon','#1868DB'],['Sainz','#1868DB'],
+    ['Ocon','#B6BABD'],['Bearman','#B6BABD'],
+    ['Hülkenberg','#BB0A30'],['Bortoleto','#BB0A30'],
+    ['Pérez','#C4A265'],['Bottas','#C4A265']
+  ];
+  const COR = Object.fromEntries(PILOTOS);
 
   let jogador = null;
   let picks = new Array(10).fill('');
+  let resultado = new Array(10).fill('');
   let situacao = null;
+  let orgVisivel = false;
 
   const $ = id => document.getElementById(id);
-  const chave = t => { const l = (t||'').trim().toLowerCase(); return APELIDOS[l] || l; };
   const guardar = {
     ler(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
     gravar(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
   };
+  const gpSlug = () => ($('gp').value||'').trim().toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'');
+  const codificar = obj => 'BUXAS1:' + btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/=+$/,'');
+  const decodificar = str => { try{ const o = JSON.parse(decodeURIComponent(escape(atob(str.replace(/^BUXAS1:/,''))))); return (o && Array.isArray(o.p) && o.p.length===10) ? o : null; }catch(e){ return null; } };
+  const horaBR = iso => { const h = new Date(iso); return isNaN(h) ? '' : h.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+' '+h.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); };
 
-  function codificar(obj){
-    return 'BUXAS1:' + btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/=+$/,'');
-  }
-  function decodificar(str){
-    try{
-      const o = JSON.parse(decodeURIComponent(escape(atob(str.replace(/^BUXAS1:/,'')))));
-      return (o && Array.isArray(o.p) && o.p.length===10) ? o : null;
-    }catch(e){ return null; }
-  }
-
-  /* ---------- montagem ---------- */
-  function montarGrid(){
+  /* ---------- seletor de pilotos (usado em palpite e resultado) ---------- */
+  function renderSeletor(prefixo, arr, onChange, travado){
+    const slots = $('slots-'+prefixo), grade = $('grade-'+prefixo);
     let html = '';
     for(let i=0;i<10;i++){
       if(i===5) html += '<div class="divisor"><span>daqui pra baixo vale o bônus</span><div class="regua"></div></div>';
-      const cls = ['linha', i%2===0?'impar':'par', i<5?'pontos-altos':'zona-bonus'].join(' ');
-      html += '<div class="'+cls+'">'+
+      const cls = ['linha', i%2===0?'impar':'par', i<5?'pontos-altos':'zona-bonus', arr[i]?'':'vazia'].join(' ');
+      html += '<div class="'+cls+'" data-slot="'+i+'">'+
         '<div class="vaga">P'+(i+1)+'</div>'+
-        '<div class="campo" data-campo="'+i+'">'+
-          '<span class="tira" data-tira="'+i+'"></span>'+
-          '<input class="piloto" data-i="'+i+'" list="pilotos-lista" autocomplete="off" '+
-          'placeholder="piloto" aria-label="Piloto na posição '+(i+1)+'"></div>'+
-        '<div class="valor">'+PONTOS[i]+'pt</div></div>';
+        '<div class="campo"><span class="tira" style="background:'+(COR[arr[i]]||'#D6D3CE')+'"></span>'+
+        '<span class="nome-slot">'+(arr[i] || '<i>toque num piloto</i>')+'</span>'+
+        (arr[i] && !travado ? '<span class="ctl"><button data-mv="-1" aria-label="subir">▲</button><button data-mv="1" aria-label="descer">▼</button><button data-x="1" aria-label="tirar">✕</button></span>' : '')+
+        '</div>'+
+        (prefixo==='p' ? '<div class="valor">'+PONTOS[i]+'pt</div>' : '<div class="valor"></div>')+
+      '</div>';
     }
-    html += '<datalist id="pilotos-lista">'+PILOTOS.map(p=>'<option value="'+p+'">').join('')+'</datalist>';
-    $('grid').innerHTML = html;
-    $('grid').querySelectorAll('.piloto').forEach(inp=>
-      inp.addEventListener('input', e=>{ picks[+e.target.dataset.i] = e.target.value; validar(); }));
+    slots.innerHTML = html;
+
+    const usados = new Set(arr.filter(Boolean));
+    grade.innerHTML = PILOTOS.map(([n,c])=>
+      '<button class="pil'+(usados.has(n)?' usado':'')+'" data-p="'+n+'" '+(travado?'disabled':'')+' style="--c:'+c+'">'+n+'</button>').join('');
+
+    if(travado) return;
+
+    grade.querySelectorAll('.pil').forEach(b=>b.addEventListener('click', ()=>{
+      const n = b.dataset.p;
+      if(arr.includes(n)) return;
+      const vazio = arr.findIndex(x=>!x);
+      if(vazio===-1) return;
+      arr[vazio] = n;
+      onChange(); renderSeletor(prefixo, arr, onChange, travado);
+    }));
+    slots.querySelectorAll('[data-slot]').forEach(row=>{
+      const i = +row.dataset.slot;
+      row.querySelectorAll('[data-mv]').forEach(b=>b.addEventListener('click', e=>{
+        e.stopPropagation();
+        const j = i + (+b.dataset.mv);
+        if(j<0||j>9) return;
+        [arr[i],arr[j]] = [arr[j],arr[i]];
+        onChange(); renderSeletor(prefixo, arr, onChange, travado);
+      }));
+      row.querySelectorAll('[data-x]').forEach(b=>b.addEventListener('click', e=>{
+        e.stopPropagation();
+        arr[i] = '';
+        onChange(); renderSeletor(prefixo, arr, onChange, travado);
+      }));
+    });
   }
 
+  /* ---------- palpite ---------- */
   function montarJogadores(){
     $('jogadores').innerHTML = JOGADORES.map(n=>
       '<button class="chip" data-nome="'+n+'" aria-pressed="false">'+n+
@@ -526,203 +630,273 @@
       b.setAttribute('aria-pressed', b.dataset.nome===nome ? 'true':'false'));
     const rasc = guardar.ler('buxas-rascunho-'+gpSlug()+'-'+nome);
     picks = rasc ? (JSON.parse(rasc)||new Array(10).fill('')) : new Array(10).fill('');
-    document.querySelectorAll('.piloto').forEach((inp,i)=>{ inp.value = picks[i]||''; });
     recado('','');
+    renderPalpite();
+  }
+
+  function prazoEncerrado(){
+    return !!(situacao && situacao.prazo && Date.now() > Date.parse(situacao.prazo));
+  }
+
+  function renderPalpite(){
+    const travado = !$('gp').value || prazoEncerrado();
+    renderSeletor('p', picks, ()=>{ if(jogador) guardar.gravar('buxas-rascunho-'+gpSlug()+'-'+jogador, JSON.stringify(picks)); validar(); }, travado);
     validar();
-  }
-
-  function gpSlug(){
-    return ($('gp').value||'').trim().toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'');
-  }
-
-  function pintarTiras(){
-    document.querySelectorAll('.tira').forEach((t,i)=>{
-      t.style.background = TIMES[chave(picks[i])] || '#D6D3CE';
-    });
-  }
-
-  function duplicados(){
-    const vistos = {}, dup = new Set();
-    picks.forEach((p,i)=>{
-      if(!p||!p.trim()) return;
-      const k = chave(p);
-      if(vistos[k]!==undefined){ dup.add(i); dup.add(vistos[k]); } else vistos[k]=i;
-    });
-    return dup;
+    statusEnvio();
   }
 
   function validar(){
-    const dup = duplicados();
-    document.querySelectorAll('.campo').forEach((c,i)=>c.classList.toggle('repetido', dup.has(i)));
-    pintarTiras();
-    const faltam = picks.filter(p=>!p||!p.trim()).length;
+    const faltam = picks.filter(p=>!p).length;
     const semRodada = !$('gp').value;
-    $('enviar').disabled = semRodada || !(jogador && faltam===0 && dup.size===0);
+    const enc = prazoEncerrado();
+    $('enviar').disabled = semRodada || enc || !(jogador && faltam===0);
     $('enviar').textContent = semRodada ? 'Rodada ainda não aberta'
+      : enc ? 'Prazo encerrado'
       : !jogador ? 'Escolha seu nome acima'
-      : dup.size ? 'Piloto repetido'
       : faltam ? 'Faltam '+faltam+' piloto'+(faltam>1?'s':'')
       : 'Enviar palpite';
-    if(jogador) guardar.gravar('buxas-rascunho-'+gpSlug()+'-'+jogador, JSON.stringify(picks));
   }
 
-  function recado(txt,tipo){
-    $('recado').textContent = txt;
-    $('recado').className = 'recado' + (tipo?' '+tipo:'');
+  function statusEnvio(){
+    const el = $('status-envio');
+    const ent = situacao && situacao.entregues ? situacao.entregues.find(e=>e.jogador===jogador) : null;
+    if(jogador && ent){
+      el.style.display = 'block';
+      el.innerHTML = '✓ <b>'+jogador+'</b>, você enviou às '+horaBR(ent.hora)+'.'+(prazoEncerrado() ? ' O prazo encerrou.' : ' Pode mudar e reenviar até o prazo.');
+    } else { el.style.display = 'none'; }
   }
 
-  /* ---------- servidor ---------- */
+  function recado(txt,tipo){ $('recado').textContent = txt; $('recado').className = 'recado'+(tipo?' '+tipo:''); }
+
   async function enviar(){
     const b = $('enviar');
     b.disabled = true; b.textContent = 'Enviando…';
     try{
-      const r = await fetch('/api/palpites', {
-        method:'POST',
-        headers:{'content-type':'application/json'},
-        body: JSON.stringify({
-          jogador,
-          codigo: codificar({ j: jogador, g: $('gp').value, p: picks.map(p=>p.trim()) })
-        })
-      });
+      const r = await fetch('/api/palpites', {method:'POST', headers:{'content-type':'application/json'},
+        body: JSON.stringify({ jogador, codigo: codificar({ j: jogador, g: $('gp').value, p: picks.slice() }) })});
       const d = await r.json();
       if(!r.ok) throw new Error(d.erro||r.status);
-      recado('Recebido. Seu palpite fica lacrado no servidor até os cinco entregarem. '+
-             'Pode reenviar se quiser mudar antes da corrida.','ok');
-      b.textContent = 'Palpite enviado';
-      consultar();
+      recado('Recebido. Seu palpite fica lacrado no servidor até os cinco entregarem.','ok');
+      await consultar();
     }catch(e){
-      b.disabled = false; b.textContent = 'Tentar de novo';
-      recado('Não deu para enviar ('+e.message+'). Tente de novo em instantes.','erro');
+      recado('Não deu para enviar ('+e.message+'). Tente de novo.','erro');
+      validar();
     }
   }
 
+  /* ---------- prazo / cabeçalho ---------- */
+  function textoPrazo(){
+    if(!situacao || !situacao.rodada) return 'o organizador ainda não abriu a rodada';
+    const ent = (situacao.entregues||[]).length;
+    const partes = [];
+    if(situacao.finalizada) partes.push('rodada finalizada');
+    else if(situacao.aberto) partes.push('os cinco entregaram — lacre aberto');
+    else partes.push(ent ? 'faltam '+situacao.faltando.join(', ') : 'nenhum palpite ainda');
+    if(situacao.prazo && !situacao.finalizada){
+      const ms = Date.parse(situacao.prazo) - Date.now();
+      if(ms <= 0) partes.push('prazo encerrado');
+      else{
+        const h = Math.floor(ms/3600e3), m = Math.floor((ms%3600e3)/60e3), d = Math.floor(h/24);
+        partes.push('fecha em '+(d>=1 ? d+'d '+(h%24)+'h' : h>=1 ? h+'h '+m+'min' : m+'min'));
+      }
+    }
+    return partes.join(' · ');
+  }
+
+  /* ---------- servidor ---------- */
   async function consultar(){
     try{
       const r = await fetch('/api/palpites');
       situacao = await r.json();
-      const antes = $('gp').value;
-      $('gp').value = situacao.rodada || '';
-      if(antes !== $('gp').value && jogador) escolher(jogador);
-      $('enviar').disabled = $('enviar').disabled || !situacao.rodada;
-      if(!situacao.rodada){ $('enviar').textContent = 'Rodada ainda não aberta'; }
     }catch(e){
       situacao = null;
-      $('selo').textContent = 'Sem conexão com o servidor';
-      $('selo').className = 'selo';
+      $('selo').textContent = 'Sem conexão com o servidor'; $('selo').className = 'selo';
       return;
     }
+    const antes = $('gp').value;
+    $('gp').value = situacao.rodada || '';
+    if(antes !== $('gp').value){
+      const salvo = guardar.ler('buxas-resultado-'+gpSlug());
+      resultado = salvo ? (JSON.parse(salvo)||new Array(10).fill('')) : new Array(10).fill('');
+      if(jogador) escolher(jogador);
+    }
+    $('contagem').textContent = textoPrazo();
+    renderPalpite();
     pintarPainel();
+    renderResultado();
   }
 
+  /* ---------- painel ---------- */
   function pintarPainel(){
     if(!situacao) return;
     const ent = situacao.entregues || [];
     const aberto = !!situacao.aberto;
-
-    if(!situacao.rodada){
-      $('placar').textContent = '—';
-      $('contagem').textContent = 'o organizador ainda não abriu a rodada';
-      $('selo').className = 'selo';
-      $('selo').textContent = 'Nenhuma rodada aberta';
-      $('lista').innerHTML = '<p class="vazio">Abra uma rodada na área do organizador, logo abaixo.</p>';
-      $('exportar').disabled = true;
-      $('exportar').textContent = 'Libera quando os cinco entregarem';
-      return;
-    }
-    $('placar').textContent = ent.length+' de '+JOGADORES.length;
-    $('contagem').textContent = aberto
-      ? 'os cinco entregaram — lacre aberto'
-      : (ent.length ? 'faltam '+situacao.faltando.join(', ') : 'nenhum palpite ainda');
 
     JOGADORES.forEach(n=>{
       const m = document.querySelector('[data-marca="'+n+'"]');
       if(m) m.textContent = ent.some(e=>e.jogador===n) ? '✓' : '';
     });
 
-    $('selo').className = 'selo' + (aberto?' aberto':'');
-    $('selo').textContent = aberto ? 'Lacre aberto — os cinco entregaram'
-      : (ent.length ? 'Lacrado — falta '+situacao.faltando.join(', ')
-                    : 'Aguardando o primeiro palpite');
+    renderRanking();
 
+    if(!situacao.rodada){
+      $('placar').textContent = '—';
+      $('selo').className = 'selo'; $('selo').textContent = 'Nenhuma rodada aberta';
+      $('lista').innerHTML = '<p class="vazio">O organizador ainda não abriu a rodada.</p>';
+      $('exportar').disabled = true; $('exportar').textContent = 'Libera quando os cinco entregarem';
+      return;
+    }
+    $('placar').textContent = ent.length+' de '+JOGADORES.length;
+    $('selo').className = 'selo' + (aberto?' aberto':'');
+    $('selo').textContent = situacao.finalizada ? 'Rodada finalizada'
+      : aberto ? 'Lacre aberto — os cinco entregaram'
+      : (ent.length ? 'Lacrado — falta '+situacao.faltando.join(', ') : 'Aguardando o primeiro palpite');
     $('exportar').disabled = !aberto;
-    $('exportar').textContent = aberto ? 'Gerar texto para colar no Claude'
-                                       : 'Libera quando os cinco entregarem';
+    $('exportar').textContent = aberto ? 'Gerar texto para colar no Claude' : 'Libera quando os cinco entregarem';
     if(!aberto) $('saida').classList.remove('aberta');
 
-    $('lista').innerHTML = !ent.length
-      ? '<p class="vazio">Ninguém entregou ainda.</p>'
+    $('lista').innerHTML = !ent.length ? '<p class="vazio">Ninguém entregou ainda.</p>'
       : ent.map(e=>{
-          const h = new Date(e.hora);
-          const hora = isNaN(h) ? '' : h.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})+
-            ' '+h.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
           const o = aberto ? decodificar(situacao.palpites[e.jogador]) : null;
           const corpo = o ? '<div class="cartao-lista">'+o.p.map((d,i)=>(i+1)+'. '+d).join(' · ')+'</div>'
                           : '<div class="lacre">•••••••••• entregue e lacrado</div>';
           return '<div class="cartao'+(aberto?'':' lacrado')+'"><div class="cartao-topo">'+
-            '<span class="cartao-nome">'+e.jogador+'</span>'+
-            '<span class="cartao-hora">'+hora+'</span></div>'+corpo+'</div>';
+            '<span class="cartao-nome">'+e.jogador+'</span><span class="cartao-hora">'+horaBR(e.hora)+'</span></div>'+corpo+'</div>';
         }).join('');
+  }
+
+  function renderRanking(){
+    const rk = situacao.ranking || [], ant = situacao.rankingAnterior || [], hist = situacao.historico || [];
+    const posAnt = Object.fromEntries(ant.map((x,i)=>[x.jogador,i]));
+    $('rodadas-contadas').textContent = hist.length ? hist.length+' rodada'+(hist.length>1?'s':'')+' no site' : 'base pós-Espanha';
+    $('ranking-box').innerHTML = '<table class="tab">'+
+      rk.map((x,i)=>{
+        const dif = hist.length ? (posAnt[x.jogador] - i) : 0;
+        const mov = dif>0 ? '<span class="sobe">▲'+dif+'</span>' : dif<0 ? '<span class="desce">▼'+(-dif)+'</span>' : '<span class="igual">—</span>';
+        const ult = hist.length ? (hist[hist.length-1].pontos[x.jogador]||0) : null;
+        return '<tr><td class="num">'+(i+1)+'</td><td><b>'+x.jogador+'</b> '+mov+'</td>'+
+          '<td class="ult">'+(ult!==null ? '+'+ult : '')+'</td><td class="tot"><b>'+x.total+'</b></td></tr>';
+      }).join('')+'</table>';
+
+    if(!hist.length){ $('historico-box').innerHTML = ''; return; }
+    const base = situacao.base || {};
+    $('historico-box').innerHTML = '<div class="rolar"><table class="tab hist"><tr><th>Jogador</th><th>Base</th>'+
+      hist.map(h=>'<th>'+h.nome.replace(/^GP (d[aeo]s? )?/i,'')+'</th>').join('')+'<th>Total</th></tr>'+
+      rk.map(x=>'<tr><td><b>'+x.jogador+'</b></td><td>'+(base[x.jogador]||0)+'</td>'+
+        hist.map(h=>'<td>'+(h.pontos[x.jogador]||0)+'</td>').join('')+'<td><b>'+x.total+'</b></td></tr>').join('')+
+      '</table></div>';
   }
 
   function exportar(){
     if(!situacao || !situacao.aberto) return;
     const nomes = Object.keys(situacao.palpites);
     const s = $('saida');
-    s.value = 'PALPITES\n' + (situacao.gp || $('gp').value) + '\n\n' +
-      nomes.map(n=>{
-        const o = decodificar(situacao.palpites[n]);
-        return n.toUpperCase()+'\n'+o.p.map((d,i)=>'P'+(i+1)+' '+d).join('\n');
-      }).join('\n\n');
-    s.classList.add('aberta');
-    s.focus(); s.select();
+    s.value = 'PALPITES\n' + situacao.rodada + '\n\n' + nomes.map(n=>{
+      const o = decodificar(situacao.palpites[n]);
+      return n.toUpperCase()+'\n'+o.p.map((d,i)=>'P'+(i+1)+' '+d).join('\n'); }).join('\n\n');
+    s.classList.add('aberta'); s.focus(); s.select();
     try{ navigator.clipboard.writeText(s.value); }catch(e){}
   }
 
+  /* ---------- organizador ---------- */
   async function organizador(acao){
-    const senha = $('senha').value;
-    const rodada = $('nova').value.trim();
-    const r = $('recado-org');
-    if(!senha){ r.textContent = 'Digite a senha do organizador.'; r.className='recado erro'; return; }
-    if(acao==='nova-rodada' && !rodada){ r.textContent = 'Dê um nome à nova rodada.'; r.className='recado erro'; return; }
+    const senha = $('senha').value, rodada = $('nova').value.trim(), r = $('recado-org');
+    if(!senha){ r.textContent='Digite a senha do organizador.'; r.className='recado erro'; return; }
+    if(acao==='nova-rodada' && !rodada){ r.textContent='Dê um nome à nova rodada.'; r.className='recado erro'; return; }
     if(acao==='zerar' && !confirm('Apagar todos os palpites enviados na rodada atual?')) return;
+    const prazoLocal = $('prazo').value;
+    const prazo = prazoLocal ? new Date(prazoLocal).toISOString() : null;
     try{
-      const resp = await fetch('/api/palpites', {method:'POST',
-        headers:{'content-type':'application/json'},
-        body: JSON.stringify({acao, senha, rodada})});
+      const resp = await fetch('/api/palpites', {method:'POST', headers:{'content-type':'application/json'},
+        body: JSON.stringify({acao, senha, rodada, prazo})});
       const d = await resp.json();
       if(!resp.ok) throw new Error(d.erro||resp.status);
       r.textContent = acao==='nova-rodada'
-        ? 'Rodada "'+d.rodada+'" aberta. Os jogadores já veem esse nome ao abrir o site.'
-        : 'Palpites da rodada "'+d.rodada+'" apagados. Ela continua aberta, zerada.';
+        ? 'Rodada "'+d.rodada+'" aberta'+(d.prazo ? ', fecha em '+horaBR(d.prazo) : '')+'.'
+        : 'Palpites da rodada "'+d.rodada+'" apagados.';
       r.className = 'recado ok';
       $('nova').value = '';
       consultar();
-    }catch(e){
-      r.textContent = 'Não deu: '+e.message;
-      r.className = 'recado erro';
-    }
+    }catch(e){ r.textContent = 'Não deu: '+e.message; r.className = 'recado erro'; }
   }
 
+  /* ---------- apuração ---------- */
+  function renderResultado(){
+    const travado = !situacao || !situacao.rodada;
+    renderSeletor('r', resultado, ()=>{ guardar.gravar('buxas-resultado-'+gpSlug(), JSON.stringify(resultado)); validarResultado(); }, travado);
+    validarResultado();
+    if(situacao && situacao.finalizada && situacao.apuracao) renderApuracao(situacao.apuracao, true);
+  }
+
+  function validarResultado(){
+    const cheio = resultado.every(Boolean);
+    const aberto = situacao && situacao.aberto;
+    $('calcular').disabled = !(cheio && aberto);
+    $('finalizar').disabled = !(cheio && aberto);
+    $('calcular').textContent = !aberto ? 'Espere os cinco palpites' : (cheio ? 'Calcular prévia' : 'Preencha os 10 do resultado');
+  }
+
+  async function apurar(acao){
+    const r = $('recado-ap'), senha = $('senha-ap').value;
+    if(acao==='finalizar'){
+      if(!senha){ r.textContent='Digite a senha do organizador para finalizar.'; r.className='recado erro'; return; }
+      if(!confirm('Finalizar a rodada e somar os pontos no campeonato?')) return;
+    }
+    r.textContent = 'Calculando…'; r.className = 'recado';
+    try{
+      const resp = await fetch('/api/palpites', {method:'POST', headers:{'content-type':'application/json'},
+        body: JSON.stringify({acao, senha, resultado: resultado.slice()})});
+      const d = await resp.json();
+      if(!resp.ok) throw new Error(d.erro||resp.status);
+      r.textContent = acao==='finalizar' ? 'Rodada "'+d.rodada+'" finalizada. Campeonato atualizado.' : 'Prévia calculada. Nada foi salvo ainda.';
+      r.className = 'recado ok';
+      renderApuracao(d.apuracao, acao==='finalizar');
+      if(acao==='finalizar') consultar();
+    }catch(e){ r.textContent = 'Não deu: '+e.message; r.className = 'recado erro'; }
+  }
+
+  function renderApuracao(ap, final){
+    const ordem = Object.keys(ap).sort((a,b)=>ap[b].rodada-ap[a].rodada);
+    let html = '<div class="faixa">Rodada <em>'+(final?'finalizada':'prévia')+'</em></div><div class="enviados">';
+    html += '<table class="tab"><tr><th>Jogador</th><th>Top 5</th><th>6–10</th><th>Hits</th><th>Bônus</th><th>Total</th></tr>'+
+      ordem.map(n=>'<tr><td><b>'+n+'</b></td><td>'+ap[n].top5+'</td><td>'+ap[n].exato+'</td><td>'+ap[n].hits+'</td><td>'+(ap[n].bonus?'+10':'—')+'</td><td><b>'+ap[n].rodada+'</b></td></tr>').join('')+'</table>';
+    html += ordem.map(n=>{ const a = ap[n];
+      return '<details class="cartao"><summary class="cartao-nome">'+n+' — '+a.rodada+' pts</summary><div class="cartao-lista">'+
+        a.linhas.map(l=>'P'+l.pos+' '+l.piloto+' → '+l.motivo+' → <b>'+(l.pts?'+'+l.pts:'0')+'</b>').join('<br>')+
+        '<br>Nomes 6–10: '+a.hits+(a.nomesHits.length?' ('+a.nomesHits.join(', ')+')':'')+' · Bônus: '+(a.bonus?'+10':'não')+'</div></details>'; }).join('');
+    $('apuracao-box').innerHTML = html + '</div>';
+  }
+
+  /* ---------- abas e ligações ---------- */
   function aba(qual){
-    $('tela-palpitar').style.display = qual==='palpitar' ? 'block':'none';
-    $('tela-painel').style.display  = qual==='painel'  ? 'block':'none';
-    $('abas').querySelectorAll('.chip').forEach(b=>
-      b.setAttribute('aria-pressed', b.dataset.aba===qual ? 'true':'false'));
-    if(qual==='painel') consultar();
+    ['palpitar','painel','apurar'].forEach(a=>{ $('tela-'+a).style.display = a===qual ? 'block':'none'; });
+    $('abas').querySelectorAll('.chip').forEach(b=>b.setAttribute('aria-pressed', b.dataset.aba===qual ? 'true':'false'));
+    if(qual!=='palpitar') consultar();
   }
 
   montarJogadores();
-  montarGrid();
-  $('abas').querySelectorAll('.chip').forEach(b=>
-    b.addEventListener('click',()=>aba(b.dataset.aba)));
+  $('abas').querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>aba(b.dataset.aba)));
   $('enviar').addEventListener('click', enviar);
+  $('limpar').addEventListener('click', ()=>{ picks = new Array(10).fill(''); if(jogador) guardar.gravar('buxas-rascunho-'+gpSlug()+'-'+jogador, JSON.stringify(picks)); renderPalpite(); });
+  $('limpar-r').addEventListener('click', ()=>{ resultado = new Array(10).fill(''); guardar.gravar('buxas-resultado-'+gpSlug(), JSON.stringify(resultado)); renderResultado(); });
   $('exportar').addEventListener('click', exportar);
   $('abrir-rodada').addEventListener('click', ()=>organizador('nova-rodada'));
   $('zerar').addEventListener('click', ()=>organizador('zerar'));
+  $('calcular').addEventListener('click', ()=>apurar('calcular'));
+  $('finalizar').addEventListener('click', ()=>apurar('finalizar'));
+  $('mostrar-org').addEventListener('click', ()=>{
+    orgVisivel = !orgVisivel;
+    $('area-org').style.display = orgVisivel ? 'block':'none';
+    $('finalizar-box').style.display = orgVisivel ? 'block':'none';
+    $('mostrar-org').textContent = orgVisivel ? 'esconder área do organizador' : 'sou o organizador';
+  });
 
   const eu = guardar.ler('buxas-eu');
-  if(eu && JOGADORES.includes(eu)) escolher(eu); else validar();
-  consultar();
+  if(eu && JOGADORES.includes(eu)) jogador = eu;
+  renderPalpite();
+  renderResultado();
+  consultar().then(()=>{ if(jogador) escolher(jogador); });
+  setInterval(()=>{ if(situacao){ $('contagem').textContent = textoPrazo(); } }, 30000);
   setInterval(()=>{ if($('tela-painel').style.display !== 'none') consultar(); }, 20000);
 })();
 </script>
