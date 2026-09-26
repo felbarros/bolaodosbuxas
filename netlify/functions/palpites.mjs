@@ -23,6 +23,25 @@ const ANTERIORES = [
   { nome: "GP da Espanha",    pontos: { "Peter Flag": 83, "Fel": 60, "Renan": 50, "Marcus": 45, "Eric": 40 } }
 ];
 
+// ============================================================
+//  CALENDÁRIO — corridas que ainda vão acontecer
+//  A rodada abre sozinha até ABRIR_DIAS_ANTES dias antes da
+//  largada, assim que a anterior estiver finalizada. O prazo de
+//  envio é a hora da largada (em UTC; o site converte).
+//  Se uma corrida for remarcada, é só corrigir a linha dela.
+// ============================================================
+const ABRIR_DIAS_ANTES = 10;
+const CALENDARIO = [
+  { nome: "GP da Malásia",          largada: "2026-10-04T07:00:00Z" },  // Sepang, 15h local
+  { nome: "GP de Singapura",        largada: "2026-10-11T12:00:00Z" },  // 20h local
+  { nome: "GP dos Estados Unidos",  largada: "2026-10-25T20:00:00Z" },  // Austin, 15h local
+  { nome: "GP do México",           largada: "2026-11-01T20:00:00Z" },  // 14h local
+  { nome: "GP de São Paulo",        largada: "2026-11-08T17:00:00Z" },  // 14h Brasília
+  { nome: "GP de Las Vegas",        largada: "2026-11-22T04:00:00Z" },  // sábado 21, 20h local
+  { nome: "GP do Catar",            largada: "2026-11-29T16:00:00Z" },  // 19h local
+  { nome: "GP de Abu Dhabi",        largada: "2026-12-06T13:00:00Z" }   // 17h local
+];
+
 const JOGADORES = ["Marcus", "Fel", "Eric", "Peter Flag", "Renan"];
 const CONFIG = "__config";
 const VALOR_TOP5 = [25, 18, 15, 12, 10];
@@ -121,6 +140,28 @@ function ranking(config, excluirUltima = false) {
   return Object.entries(totais).sort((a, b) => b[1] - a[1]).map(([jogador, total]) => ({ jogador, total }));
 }
 
+function proximaCorrida(config) {
+  const agora = Date.now();
+  const usados = new Set([...(config.ordem || []), ...(config.rodada ? [slug(config.rodada)] : [])]);
+  return CALENDARIO.find((c) => Date.parse(c.largada) > agora && !usados.has(slug(c.nome))) || null;
+}
+
+// Abre a próxima rodada do calendário se a atual estiver finalizada
+// (ou não houver) e a largada estiver a menos de ABRIR_DIAS_ANTES dias.
+async function abrirSePrecisar(config, store) {
+  if (config.rodada) {
+    const atual = await store.get(slug(config.rodada), { type: "json" });
+    if (!atual || !atual.finalizada) return false;
+  }
+  const prox = proximaCorrida(config);
+  if (!prox) return false;
+  if (Date.parse(prox.largada) - Date.now() > ABRIR_DIAS_ANTES * 86400e3) return false;
+  config.rodada = prox.nome;
+  config.prazo = prox.largada;
+  await store.setJSON(CONFIG, config);
+  return true;
+}
+
 export default async (req) => {
   const store = getStore("bolao");
   const config = (await store.get(CONFIG, { type: "json" })) || { rodada: "", historico: {} };
@@ -208,9 +249,12 @@ export default async (req) => {
   }
 
   // ---------- leitura ----------
+  const abriuAgora = await abrirSePrecisar(config, store);
+  const prox = proximaCorrida(config);
   const base = { rodada: config.rodada, prazo: config.prazo || null, base: BASE,
                  ranking: ranking(config), rankingAnterior: ranking(config, true),
-                 historico: historicoOrdenado(config) };
+                 historico: historicoOrdenado(config), abriuAgora,
+                 proxima: prox ? { nome: prox.nome, largada: prox.largada } : null };
   if (!config.rodada) {
     return json({ ...base, entregues: [], faltando: JOGADORES, aberto: false, palpites: null, finalizada: false });
   }
