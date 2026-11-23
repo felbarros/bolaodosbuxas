@@ -122,14 +122,19 @@ const json = (dados, status = 200) =>
     headers: { "content-type": "application/json", "cache-control": "no-store" }
   });
 
-const decodificar = (codigo) => {
+const decodificarTudo = (codigo) => {
   try {
     const o = JSON.parse(Buffer.from(codigo.replace(/^BUXAS1:/, ""), "base64").toString("utf8"));
-    return Array.isArray(o.p) && o.p.length === 10 ? o.p : null;
+    return o && Array.isArray(o.p) && o.p.length === 10 ? o : null;
   } catch {
     return null;
   }
 };
+const decodificar = (codigo) => (decodificarTudo(codigo) || {}).p || null;
+
+// Mesmo formato que a página gera ao enviar
+const codificar = (obj) =>
+  "BUXAS1:" + Buffer.from(JSON.stringify(obj), "utf8").toString("base64").replace(/=+$/, "");
 
 // ---------- as regras do bolão, em um lugar só ----------
 function pontuar(palpites, oficial) {
@@ -241,6 +246,53 @@ export default async (req) => {
       return json({ ok: true, rodada: config.rodada });
     }
 
+    // ---------- organizador: corrigir palpites da rodada atual ----------
+    // Valem mesmo depois do prazo; só não mexem em rodada finalizada.
+    if (corpo.acao === "mover-palpite" || corpo.acao === "lancar-palpite") {
+      if (corpo.senha !== SENHA) return json({ erro: "senha incorreta" }, 403);
+      if (!config.rodada) return json({ erro: "nenhuma rodada aberta" }, 400);
+      const chave = slug(config.rodada);
+      const atual = (await store.get(chave, { type: "json" })) || { nome: config.rodada, palpites: {} };
+      if (atual.finalizada) return json({ erro: "esta rodada já foi finalizada" }, 400);
+
+      if (corpo.acao === "mover-palpite") {
+        const { de, para } = corpo;
+        if (!JOGADORES.includes(de) || !JOGADORES.includes(para)) return json({ erro: "jogador desconhecido" }, 400);
+        if (de === para) return json({ erro: "escolha dois nomes diferentes" }, 400);
+        const origem = atual.palpites[de];
+        if (!origem) return json({ erro: de + " não tem palpite enviado nesta rodada" }, 400);
+        if (atual.palpites[para] && !corpo.substituir)
+          return json({ erro: para + " já tem palpite enviado; confirme para substituir", precisaConfirmar: true }, 409);
+        const o = decodificarTudo(origem.codigo);
+        if (!o) return json({ erro: "palpite corrompido de " + de }, 400);
+        atual.palpites[para] = { ...origem, codigo: codificar({ ...o, j: para }), movidoDe: de };
+        delete atual.palpites[de];
+        await store.setJSON(chave, atual);
+        return json({ ok: true, rodada: config.rodada, de, para, entregues: Object.keys(atual.palpites).length });
+      }
+
+      // lancar-palpite: o organizador digita/cola os 10 pilotos de um jogador
+      const { jogador } = corpo;
+      if (!JOGADORES.includes(jogador)) return json({ erro: "jogador desconhecido" }, 400);
+      const lista = Array.isArray(corpo.pilotos) ? corpo.pilotos.map((x) => String(x || "").trim()) : [];
+      if (lista.length !== 10 || lista.some((x) => !x)) return json({ erro: "informe os 10 pilotos" }, 400);
+      const desconhecidos = lista.filter((x) => !ROTULO[norm(x)]);
+      if (desconhecidos.length) return json({ erro: "piloto não reconhecido: " + desconhecidos.join(", ") }, 400);
+      if (new Set(lista.map(norm)).size !== 10) return json({ erro: "há piloto repetido no palpite" }, 400);
+      if (atual.palpites[jogador] && !corpo.substituir)
+        return json({ erro: jogador + " já tem palpite enviado; confirme para substituir", precisaConfirmar: true }, 409);
+      const p = lista.map((x) => ROTULO[norm(x)]);
+      const obs = String(corpo.obs || "").trim().slice(0, 140);
+      atual.palpites[jogador] = {
+        codigo: codificar({ j: jogador, g: config.rodada, p }),
+        hora: new Date().toISOString(),
+        lancado: true,
+        ...(obs ? { obs } : {})
+      };
+      await store.setJSON(chave, atual);
+      return json({ ok: true, rodada: config.rodada, jogador, pilotos: p, entregues: Object.keys(atual.palpites).length });
+    }
+
     // ---------- apuração: buscar resultado na fonte ----------
     if (corpo.acao === "buscar-resultado") {
       try {
@@ -323,7 +375,12 @@ export default async (req) => {
 
   return json({
     ...base,
-    entregues: entregues.map((n) => ({ jogador: n, hora: atual.palpites[n].hora })),
+    entregues: entregues.map((n) => {
+      const e = atual.palpites[n];
+      return { jogador: n, hora: e.hora,
+               ...(e.lancado ? { lancado: true } : {}), ...(e.obs ? { obs: e.obs } : {}),
+               ...(e.movidoDe ? { movidoDe: e.movidoDe } : {}) };
+    }),
     faltando,
     aberto,
     palpites: aberto ? Object.fromEntries(entregues.map((n) => [n, atual.palpites[n].codigo])) : null,

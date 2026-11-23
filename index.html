@@ -459,6 +459,18 @@
   .hist .fixa{position:sticky;left:0;background:var(--branco);z-index:1}
   .hist th.fixa{background:var(--branco)}
 </style>
+<style>
+  .org-par{display:flex;gap:10px}
+  .org-par label{flex:1;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--cinza-claro)}
+  .org-par select{margin-top:3px}
+  select.org-campo{height:42px}
+  .org-texto{height:auto;min-height:130px;line-height:1.5;resize:vertical;font-weight:500}
+  .org-previa{font-size:13px;line-height:1.6;margin:4px 0 2px}
+  .org-previa:empty{display:none}
+  .org-previa ol{margin:4px 0 0;padding-left:26px}
+  .org-previa .falta{color:var(--f1-red);font-weight:700}
+  .cartao-nota{display:block;font-size:11px;font-weight:600;color:#8A6A00;margin-top:3px}
+</style>
 </head>
 <body style="margin:0;background:#E9E5E1">
 <noscript><div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#15151E;color:#fff;padding:20px 18px;border-bottom:3px solid #E10600"><p style="font-weight:900;font-size:19px;text-transform:uppercase;margin:0 0 8px">Abra pelo navegador</p><p style="font-size:14px;line-height:1.6;margin:0;color:#C9C9CE">Esta p&aacute;gina precisa de JavaScript. Use o link do bol&atilde;o no Safari ou Chrome.</p></div></noscript>
@@ -527,6 +539,29 @@
         <button class="exportar" id="abrir-rodada" style="margin-top:9px">Abrir nova rodada com esse nome</button>
         <button class="apagar" id="zerar" style="color:#B4472C">Zerar a rodada atual (apaga os palpites enviados)</button>
         <p class="recado" id="recado-org"></p>
+      </div>
+
+      <div class="faixa">Corrigir palpites <em>vale mesmo depois do prazo</em></div>
+      <div class="acoes" style="padding-top:14px">
+        <p class="folha-dica" style="padding:0 0 8px">Usa a senha do campo lá em cima. Os palpites continuam lacrados até os cinco estarem entregues.</p>
+
+        <label class="rotulo">1 · Palpite enviado com o nome errado</label>
+        <div class="org-par">
+          <label>Está em<select class="piloto org-campo" id="mover-de" aria-label="Está no nome de"></select></label>
+          <label>É de<select class="piloto org-campo" id="mover-para" aria-label="Pertence a"></select></label>
+        </div>
+        <button class="exportar" id="mover">Mover palpite para o nome certo</button>
+        <p class="recado" id="recado-mover"></p>
+
+        <label class="rotulo" style="margin-top:18px">2 · Lançar o palpite de alguém</label>
+        <p class="folha-dica" style="padding:0 0 8px">Para quem mandou os pilotos fora do site (ex.: WhatsApp) antes da largada, ou teve o palpite apagado.</p>
+        <select class="piloto org-campo" id="lancar-jogador" aria-label="Jogador"></select>
+        <textarea class="piloto org-campo org-texto" id="lancar-texto" rows="6" placeholder="Cole ou digite os 10 pilotos em ordem, de P1 a P10. Pode colar a mensagem do WhatsApp do jeito que está." aria-label="Pilotos"></textarea>
+        <button class="apagar" id="usar-rascunho" style="margin-top:0">puxar o rascunho salvo neste aparelho</button>
+        <input class="piloto org-campo" id="lancar-obs" type="text" maxlength="140" placeholder="de onde veio (aparece para todos), ex.: WhatsApp 21/11 23:40" aria-label="Origem do palpite" style="margin-top:9px">
+        <div class="org-previa" id="lancar-previa"></div>
+        <button class="exportar" id="lancar" disabled>Lançar palpite</button>
+        <p class="recado" id="recado-lancar"></p>
       </div>
     </div>
   </section>
@@ -844,8 +879,10 @@
           const o = aberto ? decodificar(situacao.palpites[e.jogador]) : null;
           const corpo = o ? '<div class="cartao-lista">'+o.p.map((d,i)=>(i+1)+'. '+d).join(' · ')+'</div>'
                           : '<div class="lacre">•••••••••• entregue e lacrado</div>';
+          const nota = e.lancado ? '<span class="cartao-nota">lançado pelo organizador'+(e.obs ? ' · '+esc(e.obs) : '')+'</span>'
+                     : e.movidoDe ? '<span class="cartao-nota">enviado por engano no nome de '+esc(e.movidoDe)+' e corrigido pelo organizador</span>' : '';
           return '<div class="cartao'+(aberto?'':' lacrado')+'"><div class="cartao-topo">'+
-            '<span class="cartao-nome">'+e.jogador+'</span><span class="cartao-hora">'+horaBR(e.hora)+'</span></div>'+corpo+'</div>';
+            '<span class="cartao-nome">'+e.jogador+'</span><span class="cartao-hora">'+horaBR(e.hora)+'</span></div>'+nota+corpo+'</div>';
         }).join('');
   }
 
@@ -903,6 +940,107 @@
       $('nova').value = '';
       consultar();
     }catch(e){ r.textContent = 'Não deu: '+e.message; r.className = 'recado erro'; }
+  }
+
+  /* ---------- organizador: corrigir palpites ---------- */
+  const esc = s => String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const semAcento = s => String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const ALIAS_P = {
+    kimi:'antonelli', max:'verstappen', russel:'russell', hulk:'hulkenberg', bortoletto:'bortoleto', hadjan:'hadjar',
+    checo:'perez', lewis:'hamilton', lando:'norris', charles:'leclerc', oscar:'piastri', george:'russell',
+    nico:'hulkenberg', franco:'colapinto', gabriel:'bortoleto', ollie:'bearman', oliver:'bearman', liam:'lawson',
+    arvid:'lindblad', pierre:'gasly', isack:'hadjar', carlos:'sainz', alex:'albon', fernando:'alonso',
+    lance:'stroll', esteban:'ocon', valtteri:'bottas', sergio:'perez'
+  };
+  const CHAVE_P = Object.fromEntries(PILOTOS.map(([n])=>[semAcento(n), n]));
+
+  // Acha os pilotos num texto livre, na ordem em que aparecem.
+  // "Max Verstappen" conta uma vez só (nome e sobrenome do mesmo piloto lado a lado).
+  function lerPilotos(txt){
+    const achados = [];
+    for(const w of (semAcento(txt).match(/[a-z]+/g) || [])){
+      const n = CHAVE_P[ALIAS_P[w] || w];
+      if(!n) continue;
+      if(achados.length && achados[achados.length-1]===n) continue;
+      achados.push(n);
+    }
+    return achados;
+  }
+
+  function previaLancar(){
+    const lista = lerPilotos($('lancar-texto').value);
+    const repetidos = lista.filter((n,i)=>lista.indexOf(n)!==i);
+    const ok = lista.length===10 && !repetidos.length && !!$('lancar-jogador').value;
+    let aviso = '';
+    if(!$('lancar-texto').value.trim()) aviso = '';
+    else if(repetidos.length) aviso = 'Piloto repetido: '+[...new Set(repetidos)].join(', ');
+    else if(lista.length!==10) aviso = 'Reconheci '+lista.length+' piloto'+(lista.length===1?'':'s')+' — precisa de exatamente 10.';
+    $('lancar-previa').innerHTML = !lista.length ? (aviso ? '<span class="falta">'+aviso+'</span>' : '')
+      : (aviso ? '<span class="falta">'+aviso+'</span>' : '<b>Confira a ordem:</b>')+
+        '<ol>'+lista.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ol>';
+    $('lancar').disabled = !ok;
+    $('lancar').textContent = !$('lancar-jogador').value ? 'Escolha o jogador' : ok ? 'Lançar palpite de '+$('lancar-jogador').value : 'Lançar palpite';
+    return ok ? lista : null;
+  }
+
+  function usarRascunho(){
+    const r = $('recado-lancar'), quem = $('lancar-jogador').value;
+    if(!quem){ r.textContent='Escolha primeiro de quem é o palpite.'; r.className='recado erro'; return; }
+    const salvo = guardar.ler('buxas-rascunho-'+gpSlug()+'-'+quem);
+    let arr = null; try{ arr = JSON.parse(salvo); }catch(e){}
+    if(!Array.isArray(arr) || !arr.some(Boolean)){
+      r.textContent = 'Não há rascunho de '+quem+' para '+($('gp').value||'esta rodada')+' neste aparelho.'; r.className='recado erro'; return;
+    }
+    $('lancar-texto').value = arr.map((n,i)=>(i+1)+'. '+(n||'')).join('\n');
+    r.textContent = 'Rascunho de '+quem+' puxado deste aparelho. Confira antes de lançar.'; r.className='recado ok';
+    previaLancar();
+  }
+
+  async function corrigir(acao, dados, recadoId){
+    const r = $(recadoId), senha = $('senha').value;
+    if(!senha){ r.textContent='Digite a senha do organizador no campo lá em cima.'; r.className='recado erro'; return null; }
+    r.textContent = 'Enviando…'; r.className = 'recado';
+    const mandar = async (substituir) => {
+      const resp = await fetch('/api/palpites', {method:'POST', headers:{'content-type':'application/json'},
+        body: JSON.stringify(Object.assign({acao, senha, substituir}, dados))});
+      return { resp, d: await resp.json() };
+    };
+    try{
+      let { resp, d } = await mandar(false);
+      if(resp.status===409 && d.precisaConfirmar){
+        if(!confirm(d.erro.replace('; confirme para substituir','')+'. Substituir mesmo assim?')){ r.textContent='Nada foi alterado.'; r.className='recado'; return null; }
+        ({ resp, d } = await mandar(true));
+      }
+      if(!resp.ok) throw new Error(d.erro||resp.status);
+      await consultar();
+      return d;
+    }catch(e){ r.textContent = 'Não deu: '+e.message; r.className = 'recado erro'; return null; }
+  }
+
+  async function moverPalpite(){
+    const de = $('mover-de').value, para = $('mover-para').value, r = $('recado-mover');
+    if(!de || !para){ r.textContent='Escolha os dois nomes.'; r.className='recado erro'; return; }
+    if(de===para){ r.textContent='Escolha dois nomes diferentes.'; r.className='recado erro'; return; }
+    if(!confirm('Mover o palpite que está no nome de '+de+' para '+para+'?\n'+de+' fica sem palpite e precisa ser lançado de novo.')) return;
+    const d = await corrigir('mover-palpite', {de, para}, 'recado-mover');
+    if(d){ r.textContent = 'Pronto: o palpite agora está no nome de '+para+'. '+de+' ficou sem palpite. Entregues: '+d.entregues+' de 5.'; r.className='recado ok'; }
+  }
+
+  async function lancarPalpite(){
+    const lista = previaLancar(), jogadorL = $('lancar-jogador').value, r = $('recado-lancar');
+    if(!lista) return;
+    if(!confirm('Lançar este palpite para '+jogadorL+'?\n\n'+lista.map((n,i)=>'P'+(i+1)+' '+n).join('\n'))) return;
+    const d = await corrigir('lancar-palpite', {jogador: jogadorL, pilotos: lista, obs: $('lancar-obs').value}, 'recado-lancar');
+    if(d){
+      r.textContent = 'Palpite de '+jogadorL+' lançado. Entregues: '+d.entregues+' de 5.'+(d.entregues===5?' O lacre abriu.':'');
+      r.className = 'recado ok';
+      $('lancar-texto').value = ''; $('lancar-obs').value = ''; previaLancar();
+    }
+  }
+
+  function montarCorrecao(){
+    const opcoes = '<option value="">escolha…</option>'+JOGADORES.map(n=>'<option>'+n+'</option>').join('');
+    ['mover-de','mover-para','lancar-jogador'].forEach(id=>{ $(id).innerHTML = opcoes; });
   }
 
   /* ---------- apuração ---------- */
@@ -980,6 +1118,12 @@
   }
 
   montarJogadores();
+  montarCorrecao();
+  $('mover').addEventListener('click', moverPalpite);
+  $('lancar').addEventListener('click', lancarPalpite);
+  $('usar-rascunho').addEventListener('click', usarRascunho);
+  $('lancar-texto').addEventListener('input', previaLancar);
+  $('lancar-jogador').addEventListener('change', previaLancar);
   $('folha-fechar').addEventListener('click', fecharFolha);
   $('folha-fundo').addEventListener('click', fecharFolha);
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') fecharFolha(); });
