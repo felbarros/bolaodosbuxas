@@ -471,6 +471,23 @@
   .org-previa .falta{color:var(--f1-red);font-weight:700}
   .cartao-nota{display:block;font-size:11px;font-weight:600;color:#8A6A00;margin-top:3px}
 </style>
+<style>
+  /* confirmação de quem está enviando */
+  .conf-fundo{position:fixed;inset:0;background:#15151EAA;opacity:0;pointer-events:none;transition:opacity .15s;z-index:50}
+  .conf-fundo.aberta{opacity:1;pointer-events:auto}
+  .conf{position:fixed;left:50%;top:50%;width:min(92vw,420px);transform:translate(-50%,-46%);opacity:0;pointer-events:none;
+    transition:opacity .15s,transform .15s;z-index:51;background:var(--papel);border-radius:10px;border-top:5px solid var(--f1-red);
+    box-shadow:0 12px 40px #0006;padding:20px 18px 14px;text-align:center}
+  .conf.aberta{opacity:1;pointer-events:auto;transform:translate(-50%,-50%)}
+  .conf-pergunta{font-size:15px;font-weight:600;color:var(--cinza);margin:0 0 6px}
+  .conf-nome{font-family:var(--f1);font-weight:900;font-style:italic;font-size:34px;line-height:1.1;text-transform:uppercase;color:var(--carbono);margin:0 0 6px;word-break:break-word}
+  .conf-sub{font-size:14px;color:var(--cinza);margin:0 0 14px}
+  .conf-aviso{font-size:13px;line-height:1.45;text-align:left;background:#FFF4D6;border-left:4px solid #E0A800;padding:9px 11px;margin:0 0 14px;color:#5A4500}
+  .conf-aviso:empty{display:none}
+  .conf .salvar{font-size:16px}
+  .conf .apagar{margin-top:10px}
+  @media (prefers-reduced-motion:reduce){.conf,.conf-fundo{transition:none}}
+</style>
 </head>
 <body style="margin:0;background:#E9E5E1">
 <noscript><div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#15151E;color:#fff;padding:20px 18px;border-bottom:3px solid #E10600"><p style="font-weight:900;font-size:19px;text-transform:uppercase;margin:0 0 8px">Abra pelo navegador</p><p style="font-size:14px;line-height:1.6;margin:0;color:#C9C9CE">Esta p&aacute;gina precisa de JavaScript. Use o link do bol&atilde;o no Safari ou Chrome.</p></div></noscript>
@@ -597,6 +614,16 @@
     </div>
     <p class="folha-dica">Toque num piloto já usado para trocá-lo de vaga.</p>
     <div class="grade" id="folha-grade"></div>
+  </div>
+
+  <div class="conf-fundo" id="conf-fundo"></div>
+  <div class="conf" id="conf" role="dialog" aria-modal="true" aria-labelledby="conf-nome" aria-hidden="true">
+    <p class="conf-pergunta">Tem certeza que é o</p>
+    <p class="conf-nome" id="conf-nome">—</p>
+    <p class="conf-sub">enviando este palpite?</p>
+    <p class="conf-aviso" id="conf-aviso"></p>
+    <button class="salvar" id="conf-sim">Sim, sou eu — enviar</button>
+    <button class="apagar" id="conf-nao">Não, escolher outro nome</button>
   </div>
 
   <p class="rodape"><b>P1–P5 na mosca</b> 25 / 18 / 15 / 12 / 10 · <b>top 5 fora do lugar</b> 5 · <b>P6–P10 só na mosca</b> 5 · <b>bônus de nomes P6–P10</b> +10 inteiro para cada empatado</p>
@@ -777,7 +804,33 @@
 
   function recado(txt,tipo){ $('recado').textContent = txt; $('recado').className = 'recado'+(tipo?' '+tipo:''); }
 
+  /* ---------- confirmação: é você mesmo? ---------- */
+  function abrirConfirmacao(){
+    if(!jogador || $('enviar').disabled) return;
+    fecharFolha();
+    $('conf-nome').textContent = jogador;
+    $('conf-sim').textContent = 'Sim, sou o '+jogador+' — enviar';
+    const ent = situacao && situacao.entregues ? situacao.entregues.find(e=>e.jogador===jogador) : null;
+    $('conf-aviso').textContent = ent
+      ? jogador+' já enviou um palpite às '+horaBR(ent.hora)+'. Enviar de novo apaga esse e fica valendo este.'
+      : '';
+    $('conf').classList.add('aberta'); $('conf-fundo').classList.add('aberta');
+    $('conf').setAttribute('aria-hidden','false');
+    $('conf-nao').focus();
+  }
+  function fecharConfirmacao(){
+    $('conf').classList.remove('aberta'); $('conf-fundo').classList.remove('aberta');
+    $('conf').setAttribute('aria-hidden','true');
+  }
+  function naoSouEu(){
+    fecharConfirmacao();
+    recado('Toque no seu nome acima e envie de novo.','erro');
+    const alvo = $('jogadores');
+    if(alvo && alvo.scrollIntoView) alvo.scrollIntoView({block:'center', behavior:'smooth'});
+  }
+
   async function enviar(){
+    fecharConfirmacao();
     const b = $('enviar');
     b.disabled = true; b.textContent = 'Enviando…';
     try{
@@ -1128,7 +1181,11 @@
   $('folha-fundo').addEventListener('click', fecharFolha);
   document.addEventListener('keydown', e=>{ if(e.key==='Escape') fecharFolha(); });
   $('abas').querySelectorAll('.chip').forEach(b=>b.addEventListener('click',()=>aba(b.dataset.aba)));
-  $('enviar').addEventListener('click', enviar);
+  $('enviar').addEventListener('click', abrirConfirmacao);
+  $('conf-sim').addEventListener('click', enviar);
+  $('conf-nao').addEventListener('click', naoSouEu);
+  $('conf-fundo').addEventListener('click', fecharConfirmacao);
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && $('conf').classList.contains('aberta')) fecharConfirmacao(); });
   $('limpar').addEventListener('click', ()=>{ picks = new Array(10).fill(''); if(jogador) guardar.gravar('buxas-rascunho-'+gpSlug()+'-'+jogador, JSON.stringify(picks)); renderPalpite(); });
   $('limpar-r').addEventListener('click', ()=>{ resultado = new Array(10).fill(''); guardar.gravar('buxas-resultado-'+gpSlug(), JSON.stringify(resultado)); renderResultado(); });
   $('exportar').addEventListener('click', exportar);
