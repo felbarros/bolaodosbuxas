@@ -53,6 +53,27 @@ const CALENDARIO = [
   { nome: "GP de Abu Dhabi",        largada: "2026-12-06T13:00:00Z" }   // 17h local
 ];
 
+// ============================================================
+//  CORREÇÕES DE RODADA (aplicadas uma vez, antes de finalizar)
+//  GP de Las Vegas: o Marcus enviou no nome do Fel (e apagou o
+//  palpite do Fel); o Renan mandou fora do site antes da largada.
+//  O palpite que está no nome do Fel vai para o Marcus com a hora
+//  original; quem ficar sem palpite recebe o informado aqui.
+// ============================================================
+const CORRECOES = {
+  "gp-de-las-vegas": {
+    trocado: { slot: "Fel", dono: "Marcus" },
+    informados: {
+      "Marcus": { p: ["Antonelli","Verstappen","Russell","Leclerc","Piastri","Hamilton","Gasly","Lindblad","Hülkenberg","Colapinto"],
+                  obs: "informado ao organizador" },
+      "Fel":    { p: ["Verstappen","Antonelli","Russell","Norris","Hadjar","Leclerc","Hamilton","Lindblad","Gasly","Colapinto"],
+                  obs: "o original foi substituído pelo envio do Marcus" },
+      "Renan":  { p: ["Verstappen","Russell","Norris","Hadjar","Lindblad","Antonelli","Lawson","Gasly","Colapinto","Leclerc"],
+                  obs: "mandou fora do site antes da largada" }
+    }
+  }
+};
+
 const JOGADORES = ["Marcus", "Fel", "Eric", "Peter Flag", "Renan"];
 const CONFIG = "__config";
 const VALOR_TOP5 = [25, 18, 15, 12, 10];
@@ -215,10 +236,43 @@ async function abrirSePrecisar(config, store) {
   return true;
 }
 
+async function aplicarCorrecoes(config, store) {
+  if (!config.rodada) return;
+  const chave = slug(config.rodada);
+  const c = CORRECOES[chave];
+  if (!c) return;
+  const atual = await store.get(chave, { type: "json" });
+  if (!atual || atual.finalizada || atual.correcoesAplicadas) return;
+  const igual = (a, b) => a.map(norm).join() === b.map(norm).join();
+
+  // 1) palpite enviado no nome errado: se não for o do próprio dono da vaga, vai para quem enviou
+  const { slot, dono } = c.trocado || {};
+  const noSlot = slot && atual.palpites[slot];
+  if (noSlot && !atual.palpites[dono]) {
+    const o = decodificarTudo(noSlot.codigo);
+    const ehDoProprio = o && c.informados[slot] && igual(o.p, c.informados[slot].p);
+    if (o && !ehDoProprio) {
+      atual.palpites[dono] = { ...noSlot, codigo: codificar({ ...o, j: dono }), movidoDe: slot };
+      delete atual.palpites[slot];
+    }
+  }
+  // 2) quem continuar sem palpite recebe o informado ao organizador
+  const agora = new Date().toISOString();
+  for (const [jogador, inf] of Object.entries(c.informados)) {
+    if (atual.palpites[jogador]) continue;
+    const p = inf.p.map((x) => ROTULO[norm(x)] || x);
+    atual.palpites[jogador] = { codigo: codificar({ j: jogador, g: config.rodada, p }), hora: agora, lancado: true,
+                                ...(inf.obs ? { obs: inf.obs } : {}) };
+  }
+  atual.correcoesAplicadas = agora;
+  await store.setJSON(chave, atual);
+}
+
 export default async (req) => {
   const store = getStore("bolao");
   const config = (await store.get(CONFIG, { type: "json" })) || { rodada: "", historico: {} };
   config.historico = config.historico || {};
+  await aplicarCorrecoes(config, store);
 
   if (req.method === "POST") {
     let corpo;
